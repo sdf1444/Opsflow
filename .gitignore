@@ -1,0 +1,36 @@
+# Node
+node_modules/
+dist/
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+
+# VS Code
+.vscode/
+
+# Visual Studio
+.vs/
+bin/
+obj/
+
+# Rider
+.idea/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Coverage
+coverage/
+
+# Docker
+*.pid
+
+# Build
+build/
