@@ -13,15 +13,18 @@ public class RequestService
   private readonly IRequestRepository _requestRepository;
   private readonly IUserRepository _userRepository;
   private readonly OpsFlow.Application.Interfaces.IAuditService _auditService;
+  private readonly IResponseMapper _responseMapper;
 
   public RequestService(
     IRequestRepository requestRepository,
     IUserRepository userRepository,
-    OpsFlow.Application.Interfaces.IAuditService auditService)
+    OpsFlow.Application.Interfaces.IAuditService auditService,
+    IResponseMapper responseMapper)
   {
     _requestRepository = requestRepository;
     _userRepository = userRepository;
     _auditService = auditService;
+    _responseMapper = responseMapper;
   }
 
   public async Task<Request> CreateRequestAsync(Guid userId, CreateRequestDto requestDto, CancellationToken cancellationToken)
@@ -276,14 +279,7 @@ public class RequestService
     await _auditService.LogAsync(requestId, userId, "CommentAdded", "Added comment to request.", null, cancellationToken);
     await _requestRepository.SaveChangesAsync(cancellationToken);
 
-    return new CommentResponseDto
-    {
-      Id = comment.Id,
-      AuthorName = user.Name,
-      AuthorEmail = user.Email,
-      Body = comment.Body,
-      CreatedAt = comment.CreatedAt
-    };
+    return _responseMapper.MapComment(comment, user.Name, user.Email);
   }
 
   public async Task<List<CommentResponseDto>> GetCommentsAsync(Guid userId, Guid requestId, CancellationToken cancellationToken)
@@ -307,17 +303,7 @@ public class RequestService
 
     var comments = await _requestRepository.GetCommentsAsync(requestId, cancellationToken);
 
-    return comments
-      .OrderBy(c => c.CreatedAt)
-      .Select(c => new CommentResponseDto
-      {
-        Id = c.Id,
-        AuthorName = c.User.Name,
-        AuthorEmail = c.User.Email,
-        Body = c.Body,
-        CreatedAt = c.CreatedAt
-      })
-      .ToList();
+    return _responseMapper.MapComments(comments.OrderBy(c => c.CreatedAt).ToList());
   }
 
   private static bool CanComment(User user, Request request)

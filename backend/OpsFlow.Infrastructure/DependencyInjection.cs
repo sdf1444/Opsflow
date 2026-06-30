@@ -6,6 +6,7 @@ using OpsFlow.Infrastructure.Authentication;
 using OpsFlow.Infrastructure.Persistence;
 using MediatR;
 using OpsFlow.Application.Services;
+using OpsFlow.Application.Mappings;
 
 namespace OpsFlow.Infrastructure;
 
@@ -31,6 +32,7 @@ public static class DependencyInjection
     services.AddScoped<OpsFlow.Application.Interfaces.IPasswordHasher, OpsFlow.Infrastructure.Authentication.PasswordHasher>();
     services.AddScoped<OpsFlow.Application.Interfaces.IAuditService, OpsFlow.Infrastructure.Services.AuditService>();
     services.AddScoped<OpsFlow.Application.Services.RequestService>();
+    services.AddSingleton<IResponseMapper, ResponseMapper>();
 
     // MediatR registration for application handlers
     services.AddMediatR(typeof(RequestService).Assembly);

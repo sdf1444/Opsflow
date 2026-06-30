@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using OpsFlow.Application.Interfaces;
+using OpsFlow.Application.Mappings;
 using OpsFlow.Application.Services;
 using OpsFlow.Domain.Entities;
 using OpsFlow.Domain.Enums;
@@ -67,7 +68,8 @@ public class TransactionalConsistencyTests
             var requestRepository = new FailingSaveRequestRepository(new RequestRepository(operationContext));
             var userRepository = new UserRepository(operationContext);
             var auditService = new AuditService(operationContext);
-            var service = new RequestService(requestRepository, userRepository, auditService);
+            var mapper = new ResponseMapper();
+            var service = new RequestService(requestRepository, userRepository, auditService, mapper);
 
             await Assert.ThrowsAsync<InvalidOperationException>(async () =>
                 await service.SubmitAsync(employee.Id, request.Id, CancellationToken.None));

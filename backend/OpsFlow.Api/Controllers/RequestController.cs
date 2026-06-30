@@ -5,6 +5,7 @@ using OpsFlow.Application.DTOs.Comments;
 using OpsFlow.Application.Services;
 using MediatR;
 using OpsFlow.Application.Requests.Commands;
+using OpsFlow.Application.Interfaces;
 
 namespace OpsFlow.Api.Controllers;
 
@@ -15,11 +16,13 @@ public class RequestController : ControllerBase
 {
   private readonly IMediator _mediator;
   private readonly RequestService _requestService;
+  private readonly IResponseMapper _responseMapper;
 
-  public RequestController(IMediator mediator, RequestService requestService)
+  public RequestController(IMediator mediator, RequestService requestService, IResponseMapper responseMapper)
   {
     _mediator = mediator;
     _requestService = requestService;
+    _responseMapper = responseMapper;
   }
 
   [HttpPost]
@@ -42,7 +45,8 @@ public class RequestController : ControllerBase
     };
 
     var request = await _mediator.Send(cmd, cancellationToken);
-    return CreatedAtAction(nameof(GetById), new { id = request.Id }, request);
+    var response = _responseMapper.MapRequest(request);
+    return CreatedAtAction(nameof(GetById), new { id = request.Id }, response);
   }
 
   [HttpPut("{id}")]
@@ -56,7 +60,7 @@ public class RequestController : ControllerBase
     }
 
     var request = await _requestService.UpdateDraftAsync(userId, id, requestDto, cancellationToken);
-    return Ok(request);
+    return Ok(_responseMapper.MapRequest(request));
   }
 
   [HttpPost("{id}/submit")]
@@ -70,7 +74,7 @@ public class RequestController : ControllerBase
     }
 
     var request = await _requestService.SubmitAsync(userId, id, cancellationToken);
-    return Ok(request);
+    return Ok(_responseMapper.MapRequest(request));
   }
 
   [HttpPost("{id}/approve")]
@@ -84,7 +88,7 @@ public class RequestController : ControllerBase
     }
 
     var request = await _requestService.ApproveAsync(userId, id, cancellationToken);
-    return Ok(request);
+    return Ok(_responseMapper.MapRequest(request));
   }
 
   [HttpPost("{id}/reject")]
@@ -98,7 +102,7 @@ public class RequestController : ControllerBase
     }
 
     var request = await _requestService.RejectAsync(userId, id, cancellationToken);
-    return Ok(request);
+    return Ok(_responseMapper.MapRequest(request));
   }
 
   [HttpGet]
@@ -106,7 +110,7 @@ public class RequestController : ControllerBase
   public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
   {
     var requests = await _requestService.GetAllAsync(cancellationToken);
-    return Ok(requests);
+    return Ok(_responseMapper.MapRequests(requests));
   }
 
   [HttpGet("pending")]
@@ -114,7 +118,7 @@ public class RequestController : ControllerBase
   public async Task<IActionResult> GetPending(CancellationToken cancellationToken)
   {
     var requests = await _requestService.GetPendingAsync(cancellationToken);
-    return Ok(requests);
+    return Ok(_responseMapper.MapRequests(requests));
   }
 
   [HttpPost("{id}/cancel")]
@@ -128,7 +132,7 @@ public class RequestController : ControllerBase
     }
 
     var request = await _requestService.CancelAsync(userId, id, cancellationToken);
-    return Ok(request);
+    return Ok(_responseMapper.MapRequest(request));
   }
 
   [HttpGet("{id}")]
@@ -140,7 +144,7 @@ public class RequestController : ControllerBase
       return NotFound();
     }
 
-    return Ok(request);
+    return Ok(_responseMapper.MapRequest(request));
   }
 
   [HttpGet("{id}/audit")]
@@ -166,18 +170,7 @@ public class RequestController : ControllerBase
       return Forbid();
     }
 
-    var timeline = request.AuditLogs
-      .OrderBy(a => a.CreatedAt)
-      .Select(a => new AuditLogDto
-      {
-        Id = a.Id,
-        RequestId = a.RequestId,
-        UserId = a.UserId,
-        Action = a.Action,
-        Description = a.Description,
-        Metadata = a.Metadata,
-        CreatedAt = a.CreatedAt
-      });
+    var timeline = _responseMapper.MapAuditLogs(request.AuditLogs.OrderBy(a => a.CreatedAt).ToList());
 
     return Ok(timeline);
   }

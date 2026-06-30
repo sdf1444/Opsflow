@@ -5,6 +5,7 @@ using OpsFlow.Application.Services;
 using OpsFlow.Domain.Entities;
 using OpsFlow.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
+using OpsFlow.Application.Mappings;
 
 namespace OpsFlow.Tests;
 
@@ -400,7 +401,8 @@ public class RequestServiceTests
         var userRepository = new InMemoryUserRepository(users);
         var requestRepository = new InMemoryRequestRepository(requests ?? Array.Empty<Request>());
         var auditService = new InMemoryAuditService(requestRepository);
-        return new RequestService(requestRepository, userRepository, auditService);
+        var mapper = new ResponseMapper();
+        return new RequestService(requestRepository, userRepository, auditService, mapper);
     }
 
     private class InMemoryUserRepository : IUserRepository
