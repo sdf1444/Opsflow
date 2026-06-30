@@ -23,6 +23,9 @@ public static class DependencyInjection
       configuration.GetSection("Jwt"));
 
     services.AddScoped<ITokenService, TokenService>();
+    services.AddScoped<OpsFlow.Application.Interfaces.IAuthService, OpsFlow.Application.Services.AuthService>();
+    services.AddScoped<OpsFlow.Application.Interfaces.IUserRepository, OpsFlow.Infrastructure.Repositories.UserRepository>();
+    services.AddScoped<OpsFlow.Application.Interfaces.IPasswordHasher, OpsFlow.Infrastructure.Authentication.PasswordHasher>();
 
     return services;
   }

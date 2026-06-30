@@ -1,11 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using OpsFlow.Application.DTOs.Auth;
 using OpsFlow.Application.Interfaces;
-using OpsFlow.Domain.Entities;
-using OpsFlow.Domain.Enums;
-using OpsFlow.Infrastructure.Persistence;
 
 namespace OpsFlow.Api.Controllers;
 
@@ -13,15 +9,11 @@ namespace OpsFlow.Api.Controllers;
 [Route("api/auth")]
 public class AuthController : ControllerBase
 {
-    private readonly AppDbContext _dbContext;
-    private readonly ITokenService _tokenService;
+    private readonly IAuthService _authService;
 
-    public AuthController(
-        AppDbContext dbContext,
-        ITokenService tokenService)
+    public AuthController(IAuthService authService)
     {
-        _dbContext = dbContext;
-        _tokenService = tokenService;
+        _authService = authService;
     }
 
     [HttpPost("register")]
@@ -30,45 +22,19 @@ public class AuthController : ControllerBase
         RegisterRequest request,
         CancellationToken cancellationToken)
     {
-        var email = request.Email.Trim().ToLowerInvariant();
-
-        var emailExists = await _dbContext.Users
-            .AnyAsync(x => x.Email == email, cancellationToken);
-
-        if (emailExists)
+        try
         {
-            return BadRequest("A user with this email already exists.");
+            var response = await _authService.RegisterAsync(request, cancellationToken);
+            return Ok(response);
         }
-
-        if (!Enum.TryParse<UserRole>(request.Role, true, out var role))
+        catch (ArgumentException ex)
         {
-            return BadRequest("Invalid user role.");
+            return BadRequest(ex.Message);
         }
-
-        var user = new User
+        catch (InvalidOperationException ex)
         {
-            Id = Guid.NewGuid(),
-            Name = request.Name.Trim(),
-            Email = email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-            Role = role,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        _dbContext.Users.Add(user);
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        var token = _tokenService.CreateToken(user);
-
-        return Ok(new AuthResponse
-        {
-            Token = token,
-            Email = user.Email,
-            Name = user.Name,
-            Role = user.Role.ToString()
-        });
+            return BadRequest(ex.Message);
+        }
     }
 
     [HttpPost("login")]
@@ -77,38 +43,19 @@ public class AuthController : ControllerBase
         LoginRequest request,
         CancellationToken cancellationToken)
     {
-        var email = request.Email.Trim().ToLowerInvariant();
-
-        var user = await _dbContext.Users
-            .FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
-
-        if (user is null)
+        try
+        {
+            var response = await _authService.LoginAsync(request, cancellationToken);
+            return Ok(response);
+        }
+        catch (UnauthorizedAccessException)
         {
             return Unauthorized("Invalid email or password.");
         }
-
-        var passwordValid = BCrypt.Net.BCrypt.Verify(
-            request.Password,
-            user.PasswordHash);
-
-        if (!passwordValid)
-        {
-            return Unauthorized("Invalid email or password.");
-        }
-
-        var token = _tokenService.CreateToken(user);
-
-        return Ok(new AuthResponse
-        {
-            Token = token,
-            Email = user.Email,
-            Name = user.Name,
-            Role = user.Role.ToString()
-        });
     }
 
     [HttpGet("me")]
-    [Authorize(Policy = "AuthenticatedUser")]    
+    [Authorize(Policy = "AuthenticatedUser")]
     public async Task<ActionResult<CurrentUserResponse>> Me(
         CancellationToken cancellationToken)
     {
@@ -120,20 +67,13 @@ public class AuthController : ControllerBase
             return Unauthorized();
         }
 
-        var user = await _dbContext.Users
-            .FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
+        var currentUser = await _authService.GetCurrentUserAsync(userId, cancellationToken);
 
-        if (user is null)
+        if (currentUser is null)
         {
             return Unauthorized();
         }
 
-        return Ok(new CurrentUserResponse
-        {
-            Id = user.Id,
-            Email = user.Email,
-            Name = user.Name,
-            Role = user.Role.ToString()
-        });
+        return Ok(currentUser);
     }
 }
