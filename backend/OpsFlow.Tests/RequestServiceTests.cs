@@ -329,6 +329,12 @@ public class RequestServiceTests
             return Task.FromResult(_requests.ToList());
         }
 
+        public Task<List<Request>> GetPendingAsync(CancellationToken cancellationToken)
+        {
+            var pending = _requests.Where(r => r.Status == OpsFlow.Domain.Enums.RequestStatus.Submitted || r.Status == OpsFlow.Domain.Enums.RequestStatus.UnderReview).ToList();
+            return Task.FromResult(pending);
+        }
+
         public Task<Request?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         {
             return Task.FromResult(_requests.FirstOrDefault(r => r.Id == id));

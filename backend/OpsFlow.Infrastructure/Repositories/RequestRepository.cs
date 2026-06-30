@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using OpsFlow.Application.Interfaces;
 using OpsFlow.Domain.Entities;
 using OpsFlow.Infrastructure.Persistence;
+using OpsFlow.Domain.Enums;
 
 namespace OpsFlow.Infrastructure.Repositories;
 

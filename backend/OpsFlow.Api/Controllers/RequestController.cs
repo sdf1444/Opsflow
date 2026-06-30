@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpsFlow.Application.DTOs.Requests;
 using OpsFlow.Application.Services;
+using MediatR;
+using OpsFlow.Application.Requests.Commands;
 
 namespace OpsFlow.Api.Controllers;
 
@@ -10,10 +12,12 @@ namespace OpsFlow.Api.Controllers;
 [Authorize(Policy = "AuthenticatedUser")]
 public class RequestController : ControllerBase
 {
+  private readonly IMediator _mediator;
   private readonly RequestService _requestService;
 
-  public RequestController(RequestService requestService)
+  public RequestController(IMediator mediator, RequestService requestService)
   {
+    _mediator = mediator;
     _requestService = requestService;
   }
 
@@ -27,7 +31,16 @@ public class RequestController : ControllerBase
       return Unauthorized();
     }
 
-    var request = await _requestService.CreateRequestAsync(userId, requestDto, cancellationToken);
+    var cmd = new CreateRequestCommand
+    {
+      UserId = userId,
+      Title = requestDto.Title,
+      Description = requestDto.Description,
+      Category = requestDto.Category,
+      AssignedReviewerId = requestDto.AssignedReviewerId
+    };
+
+    var request = await _mediator.Send(cmd, cancellationToken);
     return CreatedAtAction(nameof(GetById), new { id = request.Id }, request);
   }
 

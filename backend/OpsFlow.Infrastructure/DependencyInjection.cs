@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using OpsFlow.Application.Interfaces;
 using OpsFlow.Infrastructure.Authentication;
 using OpsFlow.Infrastructure.Persistence;
+using MediatR;
+using OpsFlow.Application.Services;
 
 namespace OpsFlow.Infrastructure;
 
@@ -27,6 +29,9 @@ public static class DependencyInjection
     services.AddScoped<OpsFlow.Application.Interfaces.IUserRepository, OpsFlow.Infrastructure.Repositories.UserRepository>();
     services.AddScoped<OpsFlow.Application.Interfaces.IRequestRepository, OpsFlow.Infrastructure.Repositories.RequestRepository>();
     services.AddScoped<OpsFlow.Application.Interfaces.IPasswordHasher, OpsFlow.Infrastructure.Authentication.PasswordHasher>();
+
+    // MediatR registration for application handlers
+    services.AddMediatR(typeof(RequestService).Assembly);
 
     return services;
   }
