@@ -108,7 +108,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpGet("me")]
-    [Authorize]
+    [Authorize(Policy = "AuthenticatedUser")]    
     public async Task<ActionResult<CurrentUserResponse>> Me(
         CancellationToken cancellationToken)
     {
