@@ -27,7 +27,6 @@ public class AuditService : IAuditService
             UpdatedAt = DateTime.UtcNow
         };
 
-        _db.AuditLogs.Add(log);
-        await _db.SaveChangesAsync(cancellationToken);
+        await _db.AuditLogs.AddAsync(log, cancellationToken);
     }
 }

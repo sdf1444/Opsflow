@@ -42,9 +42,8 @@ public class CreateRequestHandler : IRequestHandler<OpsFlow.Application.Requests
         };
 
         await _requestRepository.AddAsync(entity, cancellationToken);
-        await _requestRepository.SaveChangesAsync(cancellationToken);
-
         await _auditService.LogAsync(entity.Id, request.UserId, "RequestCreated", "Created draft request.", null, cancellationToken);
+        await _requestRepository.SaveChangesAsync(cancellationToken);
 
         return entity;
     }

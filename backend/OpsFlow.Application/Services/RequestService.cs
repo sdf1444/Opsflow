@@ -43,9 +43,8 @@ public class RequestService
     };
 
     await _requestRepository.AddAsync(request, cancellationToken);
-    await _requestRepository.SaveChangesAsync(cancellationToken);
-
     await _auditService.LogAsync(request.Id, userId, "RequestCreated", "Created draft request.", null, cancellationToken);
+    await _requestRepository.SaveChangesAsync(cancellationToken);
 
     return request;
   }
@@ -80,8 +79,8 @@ public class RequestService
     request.AssignedReviewerId = requestDto.AssignedReviewerId;
     request.UpdatedAt = DateTime.UtcNow;
 
-    await _requestRepository.SaveChangesAsync(cancellationToken);
     await _auditService.LogAsync(request.Id, userId, "RequestUpdated", "Updated request details.", null, cancellationToken);
+    await _requestRepository.SaveChangesAsync(cancellationToken);
     return request;
   }
 
@@ -112,8 +111,8 @@ public class RequestService
     request.SubmittedAt = DateTime.UtcNow;
     request.UpdatedAt = DateTime.UtcNow;
 
-    await _requestRepository.SaveChangesAsync(cancellationToken);
     await _auditService.LogAsync(request.Id, userId, "RequestSubmitted", "Submitted request for review.", null, cancellationToken);
+    await _requestRepository.SaveChangesAsync(cancellationToken);
     return request;
   }
 
@@ -145,8 +144,8 @@ public class RequestService
     request.ReviewedAt = DateTime.UtcNow;
     request.UpdatedAt = DateTime.UtcNow;
 
-    await _requestRepository.SaveChangesAsync(cancellationToken);
     await _auditService.LogAsync(request.Id, userId, "RequestApproved", "Approved by manager.", null, cancellationToken);
+    await _requestRepository.SaveChangesAsync(cancellationToken);
     return request;
   }
 
@@ -178,8 +177,8 @@ public class RequestService
     request.ReviewedAt = DateTime.UtcNow;
     request.UpdatedAt = DateTime.UtcNow;
 
-    await _requestRepository.SaveChangesAsync(cancellationToken);
     await _auditService.LogAsync(request.Id, userId, "RequestRejected", "Rejected by manager.", null, cancellationToken);
+    await _requestRepository.SaveChangesAsync(cancellationToken);
     return request;
   }
 
@@ -225,8 +224,8 @@ public class RequestService
     request.Status = RequestStatus.Cancelled;
     request.UpdatedAt = DateTime.UtcNow;
 
-    await _requestRepository.SaveChangesAsync(cancellationToken);
     await _auditService.LogAsync(request.Id, userId, "RequestCancelled", "Cancelled by owner.", null, cancellationToken);
+    await _requestRepository.SaveChangesAsync(cancellationToken);
     return request;
   }
 }
