@@ -13,10 +13,7 @@ public class AuditLog : BaseEntity
   public User User { get; set; } = null!;
 
   public string Action { get; set; } = string.Empty;
+  public string Description { get; set; } = string.Empty;
 
-  public string? OldValue { get; set; }
-
-  public string? NewValue { get; set; }
-
-  public string? Details { get; set; }
+  public string? Metadata { get; set; }
 }

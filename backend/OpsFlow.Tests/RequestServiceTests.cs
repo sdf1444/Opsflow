@@ -275,7 +275,8 @@ public class RequestServiceTests
     {
         var userRepository = new InMemoryUserRepository(users);
         var requestRepository = new InMemoryRequestRepository(requests ?? Array.Empty<Request>());
-        return new RequestService(requestRepository, userRepository);
+        var auditService = new InMemoryAuditService(requestRepository);
+        return new RequestService(requestRepository, userRepository, auditService);
     }
 
     private class InMemoryUserRepository : IUserRepository
@@ -342,6 +343,43 @@ public class RequestServiceTests
 
         public Task SaveChangesAsync(CancellationToken cancellationToken)
         {
+            return Task.CompletedTask;
+        }
+
+        public void AddAuditLog(Guid requestId, OpsFlow.Domain.Entities.AuditLog log)
+        {
+            var req = _requests.FirstOrDefault(r => r.Id == requestId);
+            if (req != null)
+            {
+                req.AuditLogs.Add(log);
+            }
+        }
+    }
+
+    private class InMemoryAuditService : OpsFlow.Application.Interfaces.IAuditService
+    {
+        private readonly InMemoryRequestRepository _repo;
+
+        public InMemoryAuditService(InMemoryRequestRepository repo)
+        {
+            _repo = repo;
+        }
+
+        public Task LogAsync(Guid requestId, Guid userId, string action, string description, string? metadata = null, CancellationToken cancellationToken = default)
+        {
+            var log = new OpsFlow.Domain.Entities.AuditLog
+            {
+                Id = Guid.NewGuid(),
+                RequestId = requestId,
+                UserId = userId,
+                Action = action,
+                Description = description,
+                Metadata = metadata,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _repo.AddAuditLog(requestId, log);
             return Task.CompletedTask;
         }
     }

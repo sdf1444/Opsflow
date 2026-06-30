@@ -9,13 +9,16 @@ public class RequestService
 {
   private readonly IRequestRepository _requestRepository;
   private readonly IUserRepository _userRepository;
+  private readonly OpsFlow.Application.Interfaces.IAuditService _auditService;
 
   public RequestService(
     IRequestRepository requestRepository,
-    IUserRepository userRepository)
+    IUserRepository userRepository,
+    OpsFlow.Application.Interfaces.IAuditService auditService)
   {
     _requestRepository = requestRepository;
     _userRepository = userRepository;
+    _auditService = auditService;
   }
 
   public async Task<Request> CreateRequestAsync(Guid userId, CreateRequestDto requestDto, CancellationToken cancellationToken)
@@ -39,18 +42,10 @@ public class RequestService
       AssignedReviewerId = requestDto.AssignedReviewerId
     };
 
-    request.AuditLogs.Add(new AuditLog
-    {
-      Id = Guid.NewGuid(),
-      RequestId = request.Id,
-      UserId = userId,
-      Action = "RequestCreated",
-      CreatedAt = DateTime.UtcNow,
-      UpdatedAt = DateTime.UtcNow
-    });
-
     await _requestRepository.AddAsync(request, cancellationToken);
     await _requestRepository.SaveChangesAsync(cancellationToken);
+
+    await _auditService.LogAsync(request.Id, userId, "RequestCreated", "Created draft request.", null, cancellationToken);
 
     return request;
   }
@@ -85,17 +80,8 @@ public class RequestService
     request.AssignedReviewerId = requestDto.AssignedReviewerId;
     request.UpdatedAt = DateTime.UtcNow;
 
-    request.AuditLogs.Add(new AuditLog
-    {
-      Id = Guid.NewGuid(),
-      RequestId = request.Id,
-      UserId = userId,
-      Action = "RequestUpdated",
-      CreatedAt = DateTime.UtcNow,
-      UpdatedAt = DateTime.UtcNow
-    });
-
     await _requestRepository.SaveChangesAsync(cancellationToken);
+    await _auditService.LogAsync(request.Id, userId, "RequestUpdated", "Updated request details.", null, cancellationToken);
     return request;
   }
 
@@ -126,17 +112,8 @@ public class RequestService
     request.SubmittedAt = DateTime.UtcNow;
     request.UpdatedAt = DateTime.UtcNow;
 
-    request.AuditLogs.Add(new AuditLog
-    {
-      Id = Guid.NewGuid(),
-      RequestId = request.Id,
-      UserId = userId,
-      Action = "RequestSubmitted",
-      CreatedAt = DateTime.UtcNow,
-      UpdatedAt = DateTime.UtcNow
-    });
-
     await _requestRepository.SaveChangesAsync(cancellationToken);
+    await _auditService.LogAsync(request.Id, userId, "RequestSubmitted", "Submitted request for review.", null, cancellationToken);
     return request;
   }
 
@@ -168,17 +145,8 @@ public class RequestService
     request.ReviewedAt = DateTime.UtcNow;
     request.UpdatedAt = DateTime.UtcNow;
 
-    request.AuditLogs.Add(new AuditLog
-    {
-      Id = Guid.NewGuid(),
-      RequestId = request.Id,
-      UserId = userId,
-      Action = "RequestApproved",
-      CreatedAt = DateTime.UtcNow,
-      UpdatedAt = DateTime.UtcNow
-    });
-
     await _requestRepository.SaveChangesAsync(cancellationToken);
+    await _auditService.LogAsync(request.Id, userId, "RequestApproved", "Approved by manager.", null, cancellationToken);
     return request;
   }
 
@@ -210,17 +178,8 @@ public class RequestService
     request.ReviewedAt = DateTime.UtcNow;
     request.UpdatedAt = DateTime.UtcNow;
 
-    request.AuditLogs.Add(new AuditLog
-    {
-      Id = Guid.NewGuid(),
-      RequestId = request.Id,
-      UserId = userId,
-      Action = "RequestRejected",
-      CreatedAt = DateTime.UtcNow,
-      UpdatedAt = DateTime.UtcNow
-    });
-
     await _requestRepository.SaveChangesAsync(cancellationToken);
+    await _auditService.LogAsync(request.Id, userId, "RequestRejected", "Rejected by manager.", null, cancellationToken);
     return request;
   }
 
@@ -266,17 +225,8 @@ public class RequestService
     request.Status = RequestStatus.Cancelled;
     request.UpdatedAt = DateTime.UtcNow;
 
-    request.AuditLogs.Add(new AuditLog
-    {
-      Id = Guid.NewGuid(),
-      RequestId = request.Id,
-      UserId = userId,
-      Action = "RequestCancelled",
-      CreatedAt = DateTime.UtcNow,
-      UpdatedAt = DateTime.UtcNow
-    });
-
     await _requestRepository.SaveChangesAsync(cancellationToken);
+    await _auditService.LogAsync(request.Id, userId, "RequestCancelled", "Cancelled by owner.", null, cancellationToken);
     return request;
   }
 }

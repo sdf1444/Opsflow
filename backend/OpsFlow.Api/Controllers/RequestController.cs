@@ -141,4 +141,43 @@ public class RequestController : ControllerBase
 
     return Ok(request);
   }
+
+  [HttpGet("{id}/audit")]
+  public async Task<IActionResult> GetAudit(Guid id, CancellationToken cancellationToken)
+  {
+    var userIdValue = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (!Guid.TryParse(userIdValue, out var userId))
+    {
+      return Unauthorized();
+    }
+
+    var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+
+    var request = await _requestService.GetByIdAsync(id, cancellationToken);
+    if (request is null)
+    {
+      return NotFound();
+    }
+
+    // allow owner, managers, admins
+    if (request.CreatedByUserId != userId && role != "Manager" && role != "Admin")
+    {
+      return Forbid();
+    }
+
+    var timeline = request.AuditLogs
+      .OrderBy(a => a.CreatedAt)
+      .Select(a => new AuditLogDto
+      {
+        Id = a.Id,
+        RequestId = a.RequestId,
+        UserId = a.UserId,
+        Action = a.Action,
+        Description = a.Description,
+        Metadata = a.Metadata,
+        CreatedAt = a.CreatedAt
+      });
+
+    return Ok(timeline);
+  }
 }

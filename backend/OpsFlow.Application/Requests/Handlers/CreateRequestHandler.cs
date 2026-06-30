@@ -8,13 +8,16 @@ public class CreateRequestHandler : IRequestHandler<OpsFlow.Application.Requests
 {
     private readonly IRequestRepository _requestRepository;
     private readonly IUserRepository _userRepository;
+    private readonly OpsFlow.Application.Interfaces.IAuditService _auditService;
 
     public CreateRequestHandler(
         IRequestRepository requestRepository,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        OpsFlow.Application.Interfaces.IAuditService auditService)
     {
         _requestRepository = requestRepository;
         _userRepository = userRepository;
+        _auditService = auditService;
     }
 
     public async Task<Request> Handle(OpsFlow.Application.Requests.Commands.CreateRequestCommand request, CancellationToken cancellationToken)
@@ -38,18 +41,10 @@ public class CreateRequestHandler : IRequestHandler<OpsFlow.Application.Requests
             AssignedReviewerId = request.AssignedReviewerId
         };
 
-        entity.AuditLogs.Add(new AuditLog
-        {
-            Id = Guid.NewGuid(),
-            RequestId = entity.Id,
-            UserId = request.UserId,
-            Action = "RequestCreated",
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        });
-
         await _requestRepository.AddAsync(entity, cancellationToken);
         await _requestRepository.SaveChangesAsync(cancellationToken);
+
+        await _auditService.LogAsync(entity.Id, request.UserId, "RequestCreated", "Created draft request.", null, cancellationToken);
 
         return entity;
     }

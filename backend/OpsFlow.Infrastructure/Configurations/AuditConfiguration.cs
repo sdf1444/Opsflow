@@ -16,7 +16,10 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
       .HasMaxLength(100)
       .IsRequired();
 
-    builder.Property(x => x.Details)
+    builder.Property(x => x.Description)
       .HasMaxLength(4000);
+
+    builder.Property(x => x.Metadata)
+      .HasMaxLength(2000);
   }
 }

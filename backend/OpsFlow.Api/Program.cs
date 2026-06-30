@@ -85,10 +85,22 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-using (var scope = app.Services.CreateScope())
+var enableMigrations = Environment.GetEnvironmentVariable("ENABLE_MIGRATIONS") == "true";
+if (enableMigrations)
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        try
+        {
+            db.Database.Migrate();
+        }
+        catch (Exception ex)
+        {
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            logger.LogWarning(ex, "Database migration skipped during startup.");
+        }
+    }
 }
 
 // Configure the HTTP request pipeline.
