@@ -25,6 +25,7 @@ public static class DependencyInjection
     services.AddScoped<ITokenService, TokenService>();
     services.AddScoped<OpsFlow.Application.Interfaces.IAuthService, OpsFlow.Application.Services.AuthService>();
     services.AddScoped<OpsFlow.Application.Interfaces.IUserRepository, OpsFlow.Infrastructure.Repositories.UserRepository>();
+    services.AddScoped<OpsFlow.Application.Interfaces.IRequestRepository, OpsFlow.Infrastructure.Repositories.RequestRepository>();
     services.AddScoped<OpsFlow.Application.Interfaces.IPasswordHasher, OpsFlow.Infrastructure.Authentication.PasswordHasher>();
 
     return services;
