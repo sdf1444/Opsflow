@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
+using OpsFlow.Api.Middleware;
 using OpsFlow.Infrastructure;
 using OpsFlow.Infrastructure.Persistence;
 using System.Text;
@@ -109,6 +110,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 

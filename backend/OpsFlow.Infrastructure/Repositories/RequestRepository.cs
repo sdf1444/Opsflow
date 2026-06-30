@@ -20,6 +20,11 @@ public class RequestRepository : IRequestRepository
     await _dbContext.Requests.AddAsync(request, cancellationToken);
   }
 
+  public async Task AddCommentAsync(RequestComment comment, CancellationToken cancellationToken)
+  {
+    await _dbContext.RequestComments.AddAsync(comment, cancellationToken);
+  }
+
   public async Task<List<Request>> GetAllAsync(CancellationToken cancellationToken)
   {
     return await _dbContext.Requests
@@ -49,6 +54,15 @@ public class RequestRepository : IRequestRepository
       .Include(r => r.Comments)
       .Include(r => r.AuditLogs)
       .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+  }
+
+  public async Task<List<RequestComment>> GetCommentsAsync(Guid requestId, CancellationToken cancellationToken)
+  {
+    return await _dbContext.RequestComments
+      .Where(c => c.RequestId == requestId)
+      .Include(c => c.User)
+      .OrderBy(c => c.CreatedAt)
+      .ToListAsync(cancellationToken);
   }
 
   public Task SaveChangesAsync(CancellationToken cancellationToken)

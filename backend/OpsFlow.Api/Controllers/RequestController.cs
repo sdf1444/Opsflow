@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpsFlow.Application.DTOs.Requests;
+using OpsFlow.Application.DTOs.Comments;
 using OpsFlow.Application.Services;
 using MediatR;
 using OpsFlow.Application.Requests.Commands;
@@ -179,5 +180,31 @@ public class RequestController : ControllerBase
       });
 
     return Ok(timeline);
+  }
+
+  [HttpPost("{id}/comments")]
+  public async Task<IActionResult> AddComment(Guid id, CreateCommentDto dto, CancellationToken cancellationToken)
+  {
+    var userIdValue = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (!Guid.TryParse(userIdValue, out var userId))
+    {
+      return Unauthorized();
+    }
+
+    var comment = await _requestService.AddCommentAsync(userId, id, dto, cancellationToken);
+    return StatusCode(StatusCodes.Status201Created, comment);
+  }
+
+  [HttpGet("{id}/comments")]
+  public async Task<IActionResult> GetComments(Guid id, CancellationToken cancellationToken)
+  {
+    var userIdValue = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (!Guid.TryParse(userIdValue, out var userId))
+    {
+      return Unauthorized();
+    }
+
+    var comments = await _requestService.GetCommentsAsync(userId, id, cancellationToken);
+    return Ok(comments);
   }
 }

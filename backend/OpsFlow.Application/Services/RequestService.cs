@@ -1,7 +1,10 @@
 using OpsFlow.Application.DTOs.Requests;
+using OpsFlow.Application.DTOs.Comments;
 using OpsFlow.Application.Interfaces;
 using OpsFlow.Domain.Entities;
 using OpsFlow.Domain.Enums;
+using System.ComponentModel.DataAnnotations;
+using CommentResponseDto = OpsFlow.Application.DTOs.Comments.CommentDto;
 
 namespace OpsFlow.Application.Services;
 
@@ -227,5 +230,104 @@ public class RequestService
     await _auditService.LogAsync(request.Id, userId, "RequestCancelled", "Cancelled by owner.", null, cancellationToken);
     await _requestRepository.SaveChangesAsync(cancellationToken);
     return request;
+  }
+
+  public async Task<CommentResponseDto> AddCommentAsync(Guid userId, Guid requestId, CreateCommentDto dto, CancellationToken cancellationToken)
+  {
+    var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+    if (user is null)
+    {
+      throw new UnauthorizedAccessException("User not found.");
+    }
+
+    var request = await _requestRepository.GetByIdAsync(requestId, cancellationToken);
+    if (request is null)
+    {
+      throw new InvalidOperationException("Request not found.");
+    }
+
+    if (!CanComment(user, request))
+    {
+      throw new UnauthorizedAccessException("You are not authorized to comment on this request.");
+    }
+
+    if (string.IsNullOrWhiteSpace(dto.Body))
+    {
+      throw new ValidationException("Comment is required.");
+    }
+
+    if (dto.Body.Length > 2000)
+    {
+      throw new ValidationException("Comment cannot exceed 2000 characters.");
+    }
+
+    var now = DateTime.UtcNow;
+    var comment = new RequestComment
+    {
+      Id = Guid.NewGuid(),
+      RequestId = requestId,
+      UserId = userId,
+      Body = dto.Body,
+      CreatedAt = now,
+      UpdatedAt = now
+    };
+
+    await _requestRepository.AddCommentAsync(comment, cancellationToken);
+    await _auditService.LogAsync(requestId, userId, "CommentAdded", "Added comment to request.", null, cancellationToken);
+    await _requestRepository.SaveChangesAsync(cancellationToken);
+
+    return new CommentResponseDto
+    {
+      Id = comment.Id,
+      AuthorName = user.Name,
+      AuthorEmail = user.Email,
+      Body = comment.Body,
+      CreatedAt = comment.CreatedAt
+    };
+  }
+
+  public async Task<List<CommentResponseDto>> GetCommentsAsync(Guid userId, Guid requestId, CancellationToken cancellationToken)
+  {
+    var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+    if (user is null)
+    {
+      throw new UnauthorizedAccessException("User not found.");
+    }
+
+    var request = await _requestRepository.GetByIdAsync(requestId, cancellationToken);
+    if (request is null)
+    {
+      throw new InvalidOperationException("Request not found.");
+    }
+
+    if (!CanComment(user, request))
+    {
+      throw new UnauthorizedAccessException("You are not authorized to view comments for this request.");
+    }
+
+    var comments = await _requestRepository.GetCommentsAsync(requestId, cancellationToken);
+
+    return comments
+      .OrderBy(c => c.CreatedAt)
+      .Select(c => new CommentResponseDto
+      {
+        Id = c.Id,
+        AuthorName = c.User.Name,
+        AuthorEmail = c.User.Email,
+        Body = c.Body,
+        CreatedAt = c.CreatedAt
+      })
+      .ToList();
+  }
+
+  private static bool CanComment(User user, Request request)
+  {
+    return user.Role switch
+    {
+      UserRole.Admin => true,
+      UserRole.Manager => request.AssignedReviewerId == user.Id,
+      UserRole.Employee => request.CreatedByUserId == user.Id,
+      _ => false
+    };
   }
 }

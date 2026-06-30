@@ -1,8 +1,10 @@
 using OpsFlow.Application.DTOs.Requests;
+using OpsFlow.Application.DTOs.Comments;
 using OpsFlow.Application.Interfaces;
 using OpsFlow.Application.Services;
 using OpsFlow.Domain.Entities;
 using OpsFlow.Domain.Enums;
+using System.ComponentModel.DataAnnotations;
 
 namespace OpsFlow.Tests;
 
@@ -271,6 +273,128 @@ public class RequestServiceTests
         Assert.Contains(submitted.AuditLogs, log => log.Action == "RequestSubmitted");
     }
 
+    [Fact]
+    public async Task EmployeeCanAddCommentToOwnRequest()
+    {
+        var employee = new User { Id = Guid.NewGuid(), Name = "Employee", Email = "employee@test", Role = UserRole.Employee };
+        var request = new Request
+        {
+            Id = Guid.NewGuid(),
+            Title = "Comment title",
+            Description = "Comment description",
+            Category = RequestCategory.Expense,
+            Status = RequestStatus.Draft,
+            CreatedByUserId = employee.Id,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var service = CreateService(new[] { employee }, new[] { request });
+
+        var comment = await service.AddCommentAsync(employee.Id, request.Id, new CreateCommentDto
+        {
+            Body = "Please review soon."
+        }, CancellationToken.None);
+
+        Assert.Equal("Please review soon.", comment.Body);
+        Assert.Equal("Employee", comment.AuthorName);
+        Assert.Contains(request.AuditLogs, a => a.Action == "CommentAdded");
+    }
+
+    [Fact]
+    public async Task CannotAddEmptyComment()
+    {
+        var employee = new User { Id = Guid.NewGuid(), Name = "Employee", Email = "employee@test", Role = UserRole.Employee };
+        var request = new Request
+        {
+            Id = Guid.NewGuid(),
+            Title = "Comment title",
+            Description = "Comment description",
+            Category = RequestCategory.Expense,
+            Status = RequestStatus.Draft,
+            CreatedByUserId = employee.Id,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var service = CreateService(new[] { employee }, new[] { request });
+
+        await Assert.ThrowsAsync<ValidationException>(async () =>
+            await service.AddCommentAsync(employee.Id, request.Id, new CreateCommentDto { Body = "   " }, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task EmployeeCannotCommentOnOthersRequest()
+    {
+        var owner = new User { Id = Guid.NewGuid(), Name = "Owner", Email = "owner@test", Role = UserRole.Employee };
+        var other = new User { Id = Guid.NewGuid(), Name = "Other", Email = "other@test", Role = UserRole.Employee };
+        var request = new Request
+        {
+            Id = Guid.NewGuid(),
+            Title = "Comment title",
+            Description = "Comment description",
+            Category = RequestCategory.Expense,
+            Status = RequestStatus.Draft,
+            CreatedByUserId = owner.Id,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var service = CreateService(new[] { owner, other }, new[] { request });
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () =>
+            await service.AddCommentAsync(other.Id, request.Id, new CreateCommentDto { Body = "Not allowed" }, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task CommentsReturnedInChronologicalOrder()
+    {
+        var owner = new User { Id = Guid.NewGuid(), Name = "Owner", Email = "owner@test", Role = UserRole.Employee };
+        var manager = new User { Id = Guid.NewGuid(), Name = "Manager", Email = "manager@test", Role = UserRole.Manager };
+        var request = new Request
+        {
+            Id = Guid.NewGuid(),
+            Title = "Comment title",
+            Description = "Comment description",
+            Category = RequestCategory.Expense,
+            Status = RequestStatus.Submitted,
+            CreatedByUserId = owner.Id,
+            AssignedReviewerId = manager.Id,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        request.Comments.Add(new RequestComment
+        {
+            Id = Guid.NewGuid(),
+            RequestId = request.Id,
+            UserId = owner.Id,
+            User = owner,
+            Body = "First",
+            CreatedAt = DateTime.UtcNow.AddMinutes(-10),
+            UpdatedAt = DateTime.UtcNow.AddMinutes(-10)
+        });
+
+        request.Comments.Add(new RequestComment
+        {
+            Id = Guid.NewGuid(),
+            RequestId = request.Id,
+            UserId = manager.Id,
+            User = manager,
+            Body = "Second",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+
+        var service = CreateService(new[] { owner, manager }, new[] { request });
+
+        var comments = await service.GetCommentsAsync(owner.Id, request.Id, CancellationToken.None);
+
+        Assert.Equal(2, comments.Count);
+        Assert.Equal("First", comments[0].Body);
+        Assert.Equal("Second", comments[1].Body);
+    }
+
     private static RequestService CreateService(IEnumerable<User> users, IEnumerable<Request>? requests = null)
     {
         var userRepository = new InMemoryUserRepository(users);
@@ -344,6 +468,28 @@ public class RequestServiceTests
         public Task SaveChangesAsync(CancellationToken cancellationToken)
         {
             return Task.CompletedTask;
+        }
+
+        public Task AddCommentAsync(RequestComment comment, CancellationToken cancellationToken)
+        {
+            var req = _requests.FirstOrDefault(r => r.Id == comment.RequestId);
+            if (req != null)
+            {
+                req.Comments.Add(comment);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task<List<RequestComment>> GetCommentsAsync(Guid requestId, CancellationToken cancellationToken)
+        {
+            var comments = _requests
+                .Where(r => r.Id == requestId)
+                .SelectMany(r => r.Comments)
+                .OrderBy(c => c.CreatedAt)
+                .ToList();
+
+            return Task.FromResult(comments);
         }
 
         public void AddAuditLog(Guid requestId, OpsFlow.Domain.Entities.AuditLog log)

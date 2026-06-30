@@ -15,5 +15,15 @@ public class RequestCommentConfiguration : IEntityTypeConfiguration<RequestComme
     builder.Property(x => x.Body)
       .HasMaxLength(2000)
       .IsRequired();
+
+    builder.HasOne(x => x.Request)
+      .WithMany(x => x.Comments)
+      .HasForeignKey(x => x.RequestId)
+      .OnDelete(DeleteBehavior.Cascade);
+
+    builder.HasOne(x => x.User)
+      .WithMany(x => x.Comments)
+      .HasForeignKey(x => x.UserId)
+      .OnDelete(DeleteBehavior.Restrict);
   }
 }

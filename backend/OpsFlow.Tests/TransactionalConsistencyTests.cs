@@ -105,6 +105,12 @@ public class TransactionalConsistencyTests
         public Task AddAsync(Request request, CancellationToken cancellationToken)
             => _inner.AddAsync(request, cancellationToken);
 
+        public Task AddCommentAsync(RequestComment comment, CancellationToken cancellationToken)
+            => _inner.AddCommentAsync(comment, cancellationToken);
+
+        public Task<List<RequestComment>> GetCommentsAsync(Guid requestId, CancellationToken cancellationToken)
+            => _inner.GetCommentsAsync(requestId, cancellationToken);
+
         public Task SaveChangesAsync(CancellationToken cancellationToken)
             => throw new InvalidOperationException("Simulated persistence failure.");
     }

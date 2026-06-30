@@ -13,5 +13,9 @@ public interface IRequestRepository
 
   Task AddAsync(Request request, CancellationToken cancellationToken);
 
+  Task AddCommentAsync(RequestComment comment, CancellationToken cancellationToken);
+
+  Task<List<RequestComment>> GetCommentsAsync(Guid requestId, CancellationToken cancellationToken);
+
   Task SaveChangesAsync(CancellationToken cancellationToken);
 }
