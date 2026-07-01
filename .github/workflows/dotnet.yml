@@ -1,0 +1,51 @@
+name: .NET CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore
+        working-directory: backend
+        run: dotnet restore OpsFlow.sln
+
+      - name: Build
+        working-directory: backend
+        run: dotnet build OpsFlow.sln --configuration Release --no-restore
+
+      - name: Test
+        working-directory: backend
+        run: dotnet test OpsFlow.Tests/OpsFlow.Tests.csproj --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory ./TestResults --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            backend/TestResults/**/*.trx
+          if-no-files-found: warn
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            backend/TestResults/**/coverage.cobertura.xml
+          if-no-files-found: warn
