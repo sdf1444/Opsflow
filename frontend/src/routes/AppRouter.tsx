@@ -1,9 +1,9 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import ProtectedRoute from "../components/ProtectedRoute";
 import MainLayout from "../layouts/MainLayout";
+import DashboardPage from "../features/dashboard/DashboardPage";
 import AdminPage from "../pages/AdminPage";
 import ApprovalsPage from "../pages/ApprovalsPage";
-import DashboardPage from "../pages/DashboardPage";
 import LoginPage from "../pages/LoginPage";
 import NotFoundPage from "../pages/NotFoundPage";
 import ProfilePage from "../pages/ProfilePage";

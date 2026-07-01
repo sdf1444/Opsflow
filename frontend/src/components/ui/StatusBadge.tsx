@@ -5,10 +5,14 @@ type StatusTone = "default" | "success" | "warning" | "error" | "info";
 const toneByStatus: Record<string, StatusTone> = {
   draft: "default",
   submitted: "info",
+  submit: "info",
   pending: "warning",
+  "pending approval": "warning",
+  pendingapproval: "warning",
   approved: "success",
   rejected: "error",
   cancelled: "default",
+  canceled: "default",
 };
 
 type Props = {
