@@ -7,7 +7,7 @@ using OpsFlow.Infrastructure.Persistence;
 
 namespace OpsFlow.Tests;
 
-public class DashboardEndpointTests : IClassFixture<RequestAuditEndpointTests.TestFactory>
+public class DashboardEndpointTests : IClassFixture<RequestAuditEndpointTests.TestFactory>, IAsyncLifetime
 {
     private readonly RequestAuditEndpointTests.TestFactory _factory;
 
@@ -15,6 +15,13 @@ public class DashboardEndpointTests : IClassFixture<RequestAuditEndpointTests.Te
     {
         _factory = factory;
     }
+
+    public async Task InitializeAsync()
+    {
+        await _factory.ResetDatabaseAsync();
+    }
+
+    public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
     public async Task EmployeeOnlySeesOwnRequests()

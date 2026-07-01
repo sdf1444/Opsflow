@@ -7,17 +7,20 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using OpsFlow.Api;
 using OpsFlow.Application.DTOs.Requests;
 using OpsFlow.Domain.Entities;
 using OpsFlow.Domain.Enums;
 using OpsFlow.Infrastructure.Persistence;
+using OpsFlow.Tests.Helpers;
+using Testcontainers.PostgreSql;
 using Xunit;
 
 namespace OpsFlow.Tests;
 
-public class RequestAuditEndpointTests : IClassFixture<RequestAuditEndpointTests.TestFactory>
+public class RequestAuditEndpointTests : IClassFixture<RequestAuditEndpointTests.TestFactory>, IAsyncLifetime
 {
     private readonly TestFactory _factory;
 
@@ -25,6 +28,13 @@ public class RequestAuditEndpointTests : IClassFixture<RequestAuditEndpointTests
     {
         _factory = factory;
     }
+
+    public async Task InitializeAsync()
+    {
+        await _factory.ResetDatabaseAsync();
+    }
+
+    public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
     public async Task OwnerCanGetAuditTimeline()
@@ -34,7 +44,8 @@ public class RequestAuditEndpointTests : IClassFixture<RequestAuditEndpointTests
             Id = Guid.NewGuid(),
             Name = "Employee",
             Email = "employee@test",
-            Role = UserRole.Employee
+            Role = UserRole.Employee,
+            PasswordHash = "hash"
         };
 
         var request = new Request
@@ -95,7 +106,8 @@ public class RequestAuditEndpointTests : IClassFixture<RequestAuditEndpointTests
             Id = Guid.NewGuid(),
             Name = "Employee",
             Email = "employee@test",
-            Role = UserRole.Employee
+            Role = UserRole.Employee,
+            PasswordHash = "hash"
         };
 
         var manager = new User
@@ -103,7 +115,8 @@ public class RequestAuditEndpointTests : IClassFixture<RequestAuditEndpointTests
             Id = Guid.NewGuid(),
             Name = "Manager",
             Email = "manager@test",
-            Role = UserRole.Manager
+            Role = UserRole.Manager,
+            PasswordHash = "hash"
         };
 
         var request = new Request
@@ -163,7 +176,8 @@ public class RequestAuditEndpointTests : IClassFixture<RequestAuditEndpointTests
             Id = Guid.NewGuid(),
             Name = "Employee",
             Email = "employee@test",
-            Role = UserRole.Employee
+            Role = UserRole.Employee,
+            PasswordHash = "hash"
         };
 
         var admin = new User
@@ -171,7 +185,8 @@ public class RequestAuditEndpointTests : IClassFixture<RequestAuditEndpointTests
             Id = Guid.NewGuid(),
             Name = "Admin",
             Email = "admin@test",
-            Role = UserRole.Admin
+            Role = UserRole.Admin,
+            PasswordHash = "hash"
         };
 
         var request = new Request
@@ -231,7 +246,8 @@ public class RequestAuditEndpointTests : IClassFixture<RequestAuditEndpointTests
             Id = Guid.NewGuid(),
             Name = "Employee",
             Email = "employee@test",
-            Role = UserRole.Employee
+            Role = UserRole.Employee,
+            PasswordHash = "hash"
         };
 
         var otherUser = new User
@@ -239,7 +255,8 @@ public class RequestAuditEndpointTests : IClassFixture<RequestAuditEndpointTests
             Id = Guid.NewGuid(),
             Name = "Other Employee",
             Email = "other@test",
-            Role = UserRole.Employee
+            Role = UserRole.Employee,
+            PasswordHash = "hash"
         };
 
         var request = new Request
@@ -287,7 +304,8 @@ public class RequestAuditEndpointTests : IClassFixture<RequestAuditEndpointTests
             Id = Guid.NewGuid(),
             Name = "Employee",
             Email = "employee@test",
-            Role = UserRole.Employee
+            Role = UserRole.Employee,
+            PasswordHash = "hash"
         };
 
         await using var scope = _factory.Services.CreateAsyncScope();
@@ -301,9 +319,44 @@ public class RequestAuditEndpointTests : IClassFixture<RequestAuditEndpointTests
         Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    public sealed class TestFactory : WebApplicationFactory<Program>
+    public sealed class TestFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
-        private readonly string _databaseName = $"OpsFlowTestDb-{Guid.NewGuid()}";
+        private PostgreSqlContainer? _postgres;
+
+        private string ConnectionString
+        {
+            get
+            {
+                if (_postgres is null)
+                {
+                    throw new InvalidOperationException("PostgreSQL test container has not been initialized.");
+                }
+
+                return _postgres.GetConnectionString();
+            }
+        }
+
+        public async Task InitializeAsync()
+        {
+            _postgres = new PostgreSqlBuilder()
+                .WithImage("postgres:16-alpine")
+                .WithDatabase("opsflow_tests")
+                .WithUsername("postgres")
+                .WithPassword("postgres")
+                .Build();
+
+            await _postgres.StartAsync();
+        }
+
+        public new async Task DisposeAsync()
+        {
+            if (_postgres is not null)
+            {
+                await _postgres.DisposeAsync();
+            }
+
+            await base.DisposeAsync();
+        }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -314,15 +367,35 @@ public class RequestAuditEndpointTests : IClassFixture<RequestAuditEndpointTests
                 services.RemoveAll(typeof(DbContextOptions));
                 services.RemoveAll(typeof(AppDbContext));
 
-                services.AddScoped(_ =>
+                services.AddScoped<AppDbContext>(_ =>
                 {
                     var options = new DbContextOptionsBuilder<AppDbContext>()
-                        .UseInMemoryDatabase(_databaseName)
+                        .UseNpgsql(ConnectionString)
                         .Options;
 
-                    return new AppDbContext(options);
+                    return new PostgresTestDbContext(options);
                 });
             });
+        }
+
+        protected override IHost CreateHost(IHostBuilder builder)
+        {
+            var host = base.CreateHost(builder);
+
+            using var scope = host.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Database.EnsureCreated();
+
+            return host;
+        }
+
+        public async Task ResetDatabaseAsync()
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            await db.Database.EnsureDeletedAsync();
+            await db.Database.EnsureCreatedAsync();
         }
 
         public HttpClient CreateAuthenticatedClient(Guid userId, string role)

@@ -9,7 +9,7 @@ using Xunit;
 
 namespace OpsFlow.Tests;
 
-public class RequestCommentsEndpointTests : IClassFixture<RequestAuditEndpointTests.TestFactory>
+public class RequestCommentsEndpointTests : IClassFixture<RequestAuditEndpointTests.TestFactory>, IAsyncLifetime
 {
     private readonly RequestAuditEndpointTests.TestFactory _factory;
 
@@ -17,6 +17,13 @@ public class RequestCommentsEndpointTests : IClassFixture<RequestAuditEndpointTe
     {
         _factory = factory;
     }
+
+    public async Task InitializeAsync()
+    {
+        await _factory.ResetDatabaseAsync();
+    }
+
+    public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
     public async Task OwnerCanAddComment_ReturnsCreated_AndCreatesAuditEntry()
