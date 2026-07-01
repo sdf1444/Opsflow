@@ -193,9 +193,11 @@ public class RequestService
     return await _requestRepository.GetByIdAsync(requestId, cancellationToken);
   }
 
-  public async Task<List<Request>> GetAllAsync(CancellationToken cancellationToken)
+  public async Task<(List<Request> Requests, int TotalCount, int Page, int PageSize)> GetAllAsync(RequestListQueryDto query, CancellationToken cancellationToken)
   {
-    return await _requestRepository.GetAllAsync(cancellationToken);
+    var normalizedQuery = NormalizeListQuery(query);
+    var (requests, totalCount) = await _requestRepository.GetAllAsync(normalizedQuery, cancellationToken);
+    return (requests, totalCount, normalizedQuery.Page, normalizedQuery.PageSize);
   }
 
   public async Task<List<Request>> GetPendingAsync(CancellationToken cancellationToken)
@@ -314,6 +316,46 @@ public class RequestService
       UserRole.Manager => request.AssignedReviewerId == user.Id,
       UserRole.Employee => request.CreatedByUserId == user.Id,
       _ => false
+    };
+  }
+
+  private static RequestListQueryDto NormalizeListQuery(RequestListQueryDto query)
+  {
+    var page = query.Page <= 0 ? 1 : query.Page;
+    var pageSize = query.PageSize <= 0 ? 20 : query.PageSize;
+    if (pageSize > 100)
+    {
+      pageSize = 100;
+    }
+
+    var sort = string.IsNullOrWhiteSpace(query.Sort)
+      ? "updatedAt_desc"
+      : query.Sort.Trim();
+
+    var supportedSorts = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+      "updatedAt_asc",
+      "updatedAt_desc",
+      "createdAt_asc",
+      "createdAt_desc",
+      "title_asc",
+      "title_desc",
+      "status_asc",
+      "status_desc"
+    };
+
+    if (!supportedSorts.Contains(sort))
+    {
+      throw new ValidationException($"Unsupported sort '{sort}'. Use one of: {string.Join(", ", supportedSorts.OrderBy(s => s, StringComparer.OrdinalIgnoreCase))}.");
+    }
+
+    return new RequestListQueryDto
+    {
+      Page = page,
+      PageSize = pageSize,
+      Status = query.Status,
+      Category = query.Category,
+      Sort = sort
     };
   }
 }

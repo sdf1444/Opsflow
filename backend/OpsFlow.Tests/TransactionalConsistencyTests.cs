@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using OpsFlow.Application.DTOs.Requests;
 using OpsFlow.Application.Interfaces;
 using OpsFlow.Application.Mappings;
 using OpsFlow.Application.Services;
@@ -98,8 +99,8 @@ public class TransactionalConsistencyTests
         public Task<Request?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
             => _inner.GetByIdAsync(id, cancellationToken);
 
-        public Task<List<Request>> GetAllAsync(CancellationToken cancellationToken)
-            => _inner.GetAllAsync(cancellationToken);
+        public Task<(List<Request> Requests, int TotalCount)> GetAllAsync(RequestListQueryDto query, CancellationToken cancellationToken)
+            => _inner.GetAllAsync(query, cancellationToken);
 
         public Task<List<Request>> GetPendingAsync(CancellationToken cancellationToken)
             => _inner.GetPendingAsync(cancellationToken);

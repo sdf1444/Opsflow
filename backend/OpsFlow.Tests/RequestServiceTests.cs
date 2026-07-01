@@ -451,9 +451,40 @@ public class RequestServiceTests
             return Task.CompletedTask;
         }
 
-        public Task<List<Request>> GetAllAsync(CancellationToken cancellationToken)
+        public Task<(List<Request> Requests, int TotalCount)> GetAllAsync(RequestListQueryDto query, CancellationToken cancellationToken)
         {
-            return Task.FromResult(_requests.ToList());
+            var requestQuery = _requests.AsQueryable();
+
+            if (query.Status.HasValue)
+            {
+                requestQuery = requestQuery.Where(r => r.Status == query.Status.Value);
+            }
+
+            if (query.Category.HasValue)
+            {
+                requestQuery = requestQuery.Where(r => r.Category == query.Category.Value);
+            }
+
+            requestQuery = query.Sort?.ToLowerInvariant() switch
+            {
+                "updatedat_asc" => requestQuery.OrderBy(r => r.UpdatedAt),
+                "updatedat_desc" => requestQuery.OrderByDescending(r => r.UpdatedAt),
+                "createdat_asc" => requestQuery.OrderBy(r => r.CreatedAt),
+                "createdat_desc" => requestQuery.OrderByDescending(r => r.CreatedAt),
+                "title_asc" => requestQuery.OrderBy(r => r.Title),
+                "title_desc" => requestQuery.OrderByDescending(r => r.Title),
+                "status_asc" => requestQuery.OrderBy(r => r.Status),
+                "status_desc" => requestQuery.OrderByDescending(r => r.Status),
+                _ => requestQuery.OrderByDescending(r => r.UpdatedAt)
+            };
+
+            var totalCount = requestQuery.Count();
+            var paged = requestQuery
+                .Skip((query.Page - 1) * query.PageSize)
+                .Take(query.PageSize)
+                .ToList();
+
+            return Task.FromResult((paged, totalCount));
         }
 
         public Task<List<Request>> GetPendingAsync(CancellationToken cancellationToken)

@@ -107,10 +107,21 @@ public class RequestController : ControllerBase
 
   [HttpGet]
   [Authorize(Policy = "ManagerOrAdmin")]
-  public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
+  public async Task<IActionResult> GetAll([FromQuery] RequestListQueryDto query, CancellationToken cancellationToken)
   {
-    var requests = await _requestService.GetAllAsync(cancellationToken);
-    return Ok(_responseMapper.MapRequests(requests));
+    var (requests, totalCount, page, pageSize) = await _requestService.GetAllAsync(query, cancellationToken);
+    var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling((double)totalCount / pageSize);
+
+    var response = new PagedResultDto<RequestDto>
+    {
+      Page = page,
+      PageSize = pageSize,
+      TotalCount = totalCount,
+      TotalPages = totalPages,
+      Items = _responseMapper.MapRequests(requests)
+    };
+
+    return Ok(response);
   }
 
   [HttpGet("pending")]
