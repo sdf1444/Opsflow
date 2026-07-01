@@ -1,9 +1,25 @@
 import { Navigate } from "react-router-dom";
 import type { PropsWithChildren } from "react";
-import { useAuth } from "../contexts/useAuth";
+import { Box, CircularProgress } from "@mui/material";
+import { useAuth } from "../features/auth/useAuth";
 
 export default function ProtectedRoute({ children }: PropsWithChildren) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          minHeight: "100vh",
+          display: "grid",
+          placeItems: "center",
+          bgcolor: "background.default",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;

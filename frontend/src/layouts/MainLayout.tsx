@@ -1,6 +1,7 @@
 import {
   AppBar,
   Box,
+  Button,
   Drawer,
   List,
   ListItemButton,
@@ -9,10 +10,13 @@ import {
   Typography,
 } from "@mui/material";
 import { Link as RouterLink, Outlet } from "react-router-dom";
+import { useAuth } from "../features/auth/useAuth";
 
 const drawerWidth = 240;
 
 export default function MainLayout() {
+  const { logout } = useAuth();
+
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "background.default" }}>
       <AppBar
@@ -25,6 +29,10 @@ export default function MainLayout() {
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
             OpsFlow
           </Typography>
+          <Box sx={{ flexGrow: 1 }} />
+          <Button color="inherit" onClick={logout}>
+            Logout
+          </Button>
         </Toolbar>
       </AppBar>
 

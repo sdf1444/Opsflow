@@ -14,41 +14,19 @@ export default function AppRouter() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
 
-      <Route element={<MainLayout />}>
+      <Route
+        element={(
+          <ProtectedRoute>
+            <MainLayout />
+          </ProtectedRoute>
+        )}
+      >
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route
-          path="/requests"
-          element={
-            <ProtectedRoute>
-              <RequestsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/requests/:id"
-          element={
-            <ProtectedRoute>
-              <RequestDetailPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/approvals"
-          element={
-            <ProtectedRoute>
-              <ApprovalsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <ProfilePage />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/requests" element={<RequestsPage />} />
+        <Route path="/requests/:id" element={<RequestDetailPage />} />
+        <Route path="/approvals" element={<ApprovalsPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

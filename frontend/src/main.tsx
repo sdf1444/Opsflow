@@ -5,7 +5,7 @@ import { BrowserRouter } from "react-router-dom";
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import App from "./App";
 import { queryClient } from "./app/queryClient";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider } from "./features/auth/authContext";
 import { theme } from "./styles/theme";
 import "./index.css";
 
