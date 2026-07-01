@@ -303,6 +303,8 @@ public class RequestAuditEndpointTests : IClassFixture<RequestAuditEndpointTests
 
     public sealed class TestFactory : WebApplicationFactory<Program>
     {
+        private readonly string _databaseName = $"OpsFlowTestDb-{Guid.NewGuid()}";
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Development");
@@ -315,7 +317,7 @@ public class RequestAuditEndpointTests : IClassFixture<RequestAuditEndpointTests
                 services.AddScoped(_ =>
                 {
                     var options = new DbContextOptionsBuilder<AppDbContext>()
-                        .UseInMemoryDatabase("OpsFlowTestDb")
+                        .UseInMemoryDatabase(_databaseName)
                         .Options;
 
                     return new AppDbContext(options);

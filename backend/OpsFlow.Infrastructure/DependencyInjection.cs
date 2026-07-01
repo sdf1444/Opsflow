@@ -29,9 +29,11 @@ public static class DependencyInjection
     services.AddScoped<OpsFlow.Application.Interfaces.IAuthService, OpsFlow.Application.Services.AuthService>();
     services.AddScoped<OpsFlow.Application.Interfaces.IUserRepository, OpsFlow.Infrastructure.Repositories.UserRepository>();
     services.AddScoped<OpsFlow.Application.Interfaces.IRequestRepository, OpsFlow.Infrastructure.Repositories.RequestRepository>();
+    services.AddScoped<OpsFlow.Application.Interfaces.IDashboardRepository, OpsFlow.Infrastructure.Repositories.DashboardRepository>();
     services.AddScoped<OpsFlow.Application.Interfaces.IPasswordHasher, OpsFlow.Infrastructure.Authentication.PasswordHasher>();
     services.AddScoped<OpsFlow.Application.Interfaces.IAuditService, OpsFlow.Infrastructure.Services.AuditService>();
     services.AddScoped<OpsFlow.Application.Services.RequestService>();
+    services.AddScoped<OpsFlow.Application.Services.DashboardService>();
     services.AddSingleton<IResponseMapper, ResponseMapper>();
 
     // MediatR registration for application handlers
