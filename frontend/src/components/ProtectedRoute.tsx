@@ -4,9 +4,9 @@ import { Box, CircularProgress } from "@mui/material";
 import { useAuth } from "../features/auth/useAuth";
 
 export default function ProtectedRoute({ children }: PropsWithChildren) {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Box
         sx={{

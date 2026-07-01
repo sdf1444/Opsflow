@@ -17,7 +17,7 @@ import { useAuth } from "../features/auth/useAuth";
 import { useLogin } from "../features/auth/useLogin";
 
 export default function LoginPage() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const loginMutation = useLogin();
 
   const { control, handleSubmit } = useForm<LoginForm>({
@@ -28,7 +28,7 @@ export default function LoginPage() {
     },
   });
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Box
         sx={{

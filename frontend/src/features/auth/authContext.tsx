@@ -17,7 +17,7 @@ type AuthContextValue = {
   login: (nextToken: string, nextUser: CurrentUserResponse) => void;
   logout: () => void;
   isAuthenticated: boolean;
-  loading: boolean;
+  isLoading: boolean;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -25,13 +25,13 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: PropsWithChildren) {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<CurrentUserResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     const existingToken = getAccessToken();
     if (!existingToken) {
-      setLoading(false);
+      setIsLoading(false);
       return;
     }
 
@@ -57,7 +57,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       })
       .finally(() => {
         if (isMounted) {
-          setLoading(false);
+          setIsLoading(false);
         }
       });
 
@@ -86,9 +86,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       login,
       logout,
       isAuthenticated: Boolean(token && user),
-      loading,
+      isLoading,
     }),
-    [user, token, login, logout, loading],
+    [user, token, login, logout, isLoading],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
