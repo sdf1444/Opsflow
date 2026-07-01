@@ -12,14 +12,25 @@ export const theme = createTheme({
     },
   },
   shape: {
-    borderRadius: 14,
+    borderRadius: 12,
+  },
+  typography: {
+    fontFamily: "Roboto, Helvetica, Arial, sans-serif",
   },
   spacing: 8,
   components: {
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 14,
+          borderRadius: 12,
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+          textTransform: "none",
         },
       },
     },

@@ -1,71 +1,30 @@
-import {
-  AppBar,
-  Box,
-  Button,
-  Drawer,
-  List,
-  ListItemButton,
-  ListItemText,
-  Toolbar,
-  Typography,
-} from "@mui/material";
-import { Link as RouterLink, Outlet } from "react-router-dom";
-import { useAuth } from "../features/auth/useAuth";
-
-const drawerWidth = 240;
+import { useState } from "react";
+import { Box, Container, Toolbar, useMediaQuery, useTheme } from "@mui/material";
+import { Outlet } from "react-router-dom";
+import AppHeader from "../components/navigation/AppHeader";
+import AppSidebar from "../components/navigation/AppSidebar";
 
 export default function MainLayout() {
-  const { logout } = useAuth();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "background.default" }}>
-      <AppBar
-        position="fixed"
-        color="inherit"
-        elevation={0}
-        sx={{ borderBottom: "1px solid", borderColor: "divider", zIndex: (t) => t.zIndex.drawer + 1 }}
-      >
-        <Toolbar>
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            OpsFlow
-          </Typography>
-          <Box sx={{ flexGrow: 1 }} />
-          <Button color="inherit" onClick={logout}>
-            Logout
-          </Button>
-        </Toolbar>
-      </AppBar>
+      <AppHeader isMobile={isMobile} onMenuClick={() => setMobileOpen(true)} />
 
-      <Drawer
-        variant="permanent"
-        sx={{
-          width: drawerWidth,
-          flexShrink: 0,
-          "& .MuiDrawer-paper": {
-            width: drawerWidth,
-            boxSizing: "border-box",
-            pt: 8,
-          },
-        }}
-      >
-        <List>
-          <ListItemButton component={RouterLink} to="/dashboard">
-            <ListItemText primary="Dashboard" />
-          </ListItemButton>
-          <ListItemButton component={RouterLink} to="/requests">
-            <ListItemText primary="Requests" />
-          </ListItemButton>
-          <ListItemButton component={RouterLink} to="/approvals">
-            <ListItemText primary="Approvals" />
-          </ListItemButton>
-          <ListItemButton component={RouterLink} to="/profile">
-            <ListItemText primary="Profile" />
-          </ListItemButton>
-        </List>
-      </Drawer>
+      <AppSidebar
+        isMobile={isMobile}
+        mobileOpen={mobileOpen}
+        onMobileClose={() => setMobileOpen(false)}
+      />
 
-      <Box component="main" sx={{ flexGrow: 1, p: 3, pt: 10 }}>
-        <Outlet />
+      <Box component="main" sx={{ flexGrow: 1 }}>
+        <Toolbar />
+        <Container maxWidth="xl" sx={{ py: 3 }}>
+          <Box sx={{ minHeight: 24, mb: 2 }} />
+          <Outlet />
+        </Container>
       </Box>
     </Box>
   );
