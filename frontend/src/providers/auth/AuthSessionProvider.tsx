@@ -10,7 +10,6 @@ import {
   type AuthContextValue,
   type AuthUser,
 } from "../../contexts/auth-context";
-import { api } from "../../api/client";
 import {
   authSessionReducer,
   initialState,
@@ -27,13 +26,6 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     writeSessionToStorage(session);
-
-    if (session.token) {
-      api.defaults.headers.common.Authorization = `Bearer ${session.token}`;
-      return;
-    }
-
-    delete api.defaults.headers.common.Authorization;
   }, [session]);
 
   const login = useCallback((nextToken: string, nextUser?: AuthUser | null) => {
