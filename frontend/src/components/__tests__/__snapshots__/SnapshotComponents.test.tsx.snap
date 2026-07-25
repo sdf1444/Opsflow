@@ -1,0 +1,74 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`stable component snapshots > DashboardCard snapshot 1`] = `
+<div
+  class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-cy1nz8-MuiPaper-root-MuiCard-root"
+  style="--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
+>
+  <div
+    class="MuiCardContent-root css-1gcoktp-MuiCardContent-root"
+  >
+    <div
+      class="MuiBox-root css-1o2orqd"
+    >
+      <div
+        class="MuiBox-root css-0"
+      >
+        <p
+          class="MuiTypography-root MuiTypography-body2 css-bkj9nb-MuiTypography-root"
+        >
+          Pending
+        </p>
+        <h4
+          class="MuiTypography-root MuiTypography-h4 css-10yrqih-MuiTypography-root"
+        >
+          3
+        </h4>
+      </div>
+      <div
+        class="MuiBox-root css-f22e1e"
+      >
+        <span>
+          P
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`stable component snapshots > EmptyState snapshot 1`] = `
+<div
+  class="MuiBox-root css-1tb3sh1"
+>
+  <h6
+    class="MuiTypography-root MuiTypography-h6 css-1miy0lu-MuiTypography-root"
+  >
+    Nothing here
+  </h6>
+  <p
+    class="MuiTypography-root MuiTypography-body2 css-tmy7vb-MuiTypography-root"
+  >
+    No data currently available.
+  </p>
+  <div
+    class="MuiBox-root css-178yklu"
+  >
+    <button>
+      Retry
+    </button>
+  </div>
+</div>
+`;
+
+exports[`stable component snapshots > RequestStatusChip snapshot 1`] = `
+<div
+  class="MuiChip-root MuiChip-filled MuiChip-sizeSmall MuiChip-colorSuccess MuiChip-filledSuccess css-o22c3r-MuiChip-root"
+>
+  <span
+    class="MuiChip-label MuiChip-labelSmall css-eccknh-MuiChip-label"
+  >
+    Approved
+  </span>
+</div>
+`;

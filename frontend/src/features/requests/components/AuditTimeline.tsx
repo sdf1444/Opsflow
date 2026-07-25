@@ -27,16 +27,20 @@ function toLabel(action: string): string {
 }
 
 export function AuditTimeline({ entries }: AuditTimelineProps) {
+  const sortedEntries = [...entries].sort(
+    (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+  );
+
   return (
     <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 } }}>
       <Stack spacing={2}>
         <Typography variant="h6">Activity</Typography>
 
-        {entries.length === 0 ? (
+        {sortedEntries.length === 0 ? (
           <Typography color="text.secondary">No activity recorded.</Typography>
         ) : (
           <Stack spacing={1.75}>
-            {entries.map((entry) => (
+            {sortedEntries.map((entry) => (
               <Stack key={entry.id} spacing={0.5} sx={{ borderLeft: 2, borderColor: "divider", pl: 1.5 }}>
                 <Typography variant="body2" fontWeight={600}>
                   {toLabel(entry.action)}
