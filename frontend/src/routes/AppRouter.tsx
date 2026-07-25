@@ -1,9 +1,10 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import ManagerOrAdminRoute from "../components/ManagerOrAdminRoute";
 import ProtectedRoute from "../components/ProtectedRoute";
 import MainLayout from "../layouts/MainLayout";
 import DashboardPage from "../features/dashboard/DashboardPage";
+import ApprovalQueuePage from "../features/approvals/ApprovalQueuePage";
 import AdminPage from "../pages/AdminPage";
-import ApprovalsPage from "../pages/ApprovalsPage";
 import EditRequestPage from "../pages/EditRequestPage";
 import LoginPage from "../pages/LoginPage";
 import NotFoundPage from "../pages/NotFoundPage";
@@ -31,7 +32,14 @@ export default function AppRouter() {
         <Route path="requests/new" element={<CreateRequestPage />} />
         <Route path="requests/:id" element={<RequestDetailPage />} />
         <Route path="requests/:id/edit" element={<EditRequestPage />} />
-        <Route path="approvals" element={<ApprovalsPage />} />
+        <Route
+          path="approvals"
+          element={(
+            <ManagerOrAdminRoute>
+              <ApprovalQueuePage />
+            </ManagerOrAdminRoute>
+          )}
+        />
         <Route path="admin" element={<AdminPage />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>

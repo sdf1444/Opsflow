@@ -1,4 +1,5 @@
 using OpsFlow.Application.DTOs.Requests;
+using OpsFlow.Application.DTOs.Approvals;
 using OpsFlow.Application.DTOs.Comments;
 using OpsFlow.Application.Interfaces;
 using OpsFlow.Domain.Entities;
@@ -226,6 +227,101 @@ public class RequestService
     var normalizedQuery = NormalizeListQuery(query);
     var (requests, totalCount) = await _requestRepository.GetAllAsync(normalizedQuery, userId, user.Role, cancellationToken);
     return (requests, totalCount, normalizedQuery.Page, normalizedQuery.PageSize);
+  }
+
+  public async Task<ApprovalQueueResponseDto> GetApprovalQueueAsync(Guid userId, RequestListQueryDto query, CancellationToken cancellationToken)
+  {
+    var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+    if (user is null)
+    {
+      throw new UnauthorizedAccessException("User not found.");
+    }
+
+    if (user.Role == UserRole.Employee)
+    {
+      throw new UnauthorizedAccessException("Employees cannot access the approval queue.");
+    }
+
+    var normalizedQuery = NormalizeListQuery(query);
+    var pendingRequests = await _requestRepository.GetPendingAsync(cancellationToken);
+
+    var visiblePending = user.Role switch
+    {
+      UserRole.Admin => pendingRequests,
+      UserRole.Manager => pendingRequests.Where(r => r.AssignedReviewerId == userId).ToList(),
+      _ => throw new UnauthorizedAccessException("You are not authorized to access the approval queue.")
+    };
+
+    var summary = new ApprovalQueueSummaryDto
+    {
+      Pending = visiblePending.Count,
+      Overdue = visiblePending.Count(r => (r.SubmittedAt ?? r.UpdatedAt) <= DateTime.UtcNow.AddDays(-2))
+    };
+
+    IEnumerable<Request> queryable = visiblePending;
+
+    if (!string.IsNullOrWhiteSpace(normalizedQuery.Search))
+    {
+      var search = normalizedQuery.Search.Trim();
+      queryable = queryable.Where(r =>
+        r.Title.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+        r.Description.Contains(search, StringComparison.OrdinalIgnoreCase));
+    }
+
+    if (normalizedQuery.Status.HasValue)
+    {
+      queryable = queryable.Where(r => r.Status == normalizedQuery.Status.Value);
+    }
+
+    if (normalizedQuery.Category.HasValue)
+    {
+      queryable = queryable.Where(r => r.Category == normalizedQuery.Category.Value);
+    }
+
+    var sortBy = normalizedQuery.SortBy ?? "updatedAt";
+    var sortDirection = normalizedQuery.SortDirection ?? "desc";
+    var isAscending = string.Equals(sortDirection, "asc", StringComparison.OrdinalIgnoreCase);
+
+    queryable = sortBy.ToLowerInvariant() switch
+    {
+      "createdat" when isAscending => queryable.OrderBy(r => r.CreatedAt),
+      "createdat" => queryable.OrderByDescending(r => r.CreatedAt),
+      "title" when isAscending => queryable.OrderBy(r => r.Title),
+      "title" => queryable.OrderByDescending(r => r.Title),
+      "status" when isAscending => queryable.OrderBy(r => r.Status),
+      "status" => queryable.OrderByDescending(r => r.Status),
+      _ when isAscending => queryable.OrderBy(r => r.UpdatedAt),
+      _ => queryable.OrderByDescending(r => r.UpdatedAt)
+    };
+
+    var totalCount = queryable.Count();
+
+    var items = queryable
+      .Skip((normalizedQuery.Page - 1) * normalizedQuery.PageSize)
+      .Take(normalizedQuery.PageSize)
+      .Select(r => new ApprovalQueueItemDto
+      {
+        Id = r.Id,
+        Title = r.Title,
+        Category = r.Category,
+        Status = r.Status,
+        CreatedByName = r.CreatedByUser?.Name ?? string.Empty,
+        SubmittedAt = r.SubmittedAt ?? r.CreatedAt,
+        UpdatedAt = r.UpdatedAt
+      })
+      .ToList();
+
+    var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling((double)totalCount / normalizedQuery.PageSize);
+
+    return new ApprovalQueueResponseDto
+    {
+      Items = items,
+      Summary = summary,
+      Page = normalizedQuery.Page,
+      PageSize = normalizedQuery.PageSize,
+      TotalCount = totalCount,
+      TotalPages = totalPages
+    };
   }
 
   public async Task<List<Request>> GetPendingAsync(CancellationToken cancellationToken)

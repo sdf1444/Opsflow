@@ -1,4 +1,5 @@
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import type { ReactNode } from "react";
 import {
   Box,
   IconButton,
@@ -30,6 +31,9 @@ type RequestsTableProps = {
   onPageChange: (page: number) => void;
   onPageSizeChange: (pageSize: number) => void;
   onSortChange: (sortBy: SortableColumn) => void;
+  showReviewerColumn?: boolean;
+  showDescription?: boolean;
+  renderActions?: (request: RequestListItem) => ReactNode;
 };
 
 function formatDate(value: string): string {
@@ -61,6 +65,9 @@ export function RequestsTable({
   onPageChange,
   onPageSizeChange,
   onSortChange,
+  showReviewerColumn = true,
+  showDescription = true,
+  renderActions,
 }: RequestsTableProps) {
   const navigate = useNavigate();
 
@@ -96,7 +103,7 @@ export function RequestsTable({
 
               <TableCell>Requester</TableCell>
 
-              <TableCell>Reviewer</TableCell>
+              {showReviewerColumn && <TableCell>Reviewer</TableCell>}
 
               <TableCell onClick={() => onSortChange("updatedAt")} sx={{ cursor: "pointer", fontWeight: 600 }}>
                 {renderSortLabel("updatedAt", "Last updated")}
@@ -114,19 +121,21 @@ export function RequestsTable({
                     {request.title}
                   </Typography>
 
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{
-                      display: "block",
-                      maxWidth: 320,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {request.description}
-                  </Typography>
+                  {showDescription && (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{
+                        display: "block",
+                        maxWidth: 320,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {request.description}
+                    </Typography>
+                  )}
                 </TableCell>
 
                 <TableCell>{formatCategory(request.category)}</TableCell>
@@ -137,11 +146,13 @@ export function RequestsTable({
 
                 <TableCell>{request.createdByName}</TableCell>
 
-                <TableCell>{request.assignedReviewerName ?? "Not assigned"}</TableCell>
+                {showReviewerColumn && <TableCell>{request.assignedReviewerName ?? "Not assigned"}</TableCell>}
 
                 <TableCell>{formatDate(request.updatedAt)}</TableCell>
 
                 <TableCell align="right">
+                  {renderActions?.(request)}
+
                   <Tooltip title="Open request">
                     <IconButton aria-label={`Open ${request.title}`} onClick={() => navigate(`/requests/${request.id}`)}>
                       <OpenInNewIcon />
