@@ -8,7 +8,7 @@ public class CommentDto
 
   public string AuthorEmail { get; set; } = string.Empty;
 
-  public string Body { get; set; } = string.Empty;
+  public string Content { get; set; } = string.Empty;
 
   public DateTime CreatedAt { get; set; }
 }

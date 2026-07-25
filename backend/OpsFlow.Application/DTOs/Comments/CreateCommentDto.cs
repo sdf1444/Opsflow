@@ -2,5 +2,5 @@ namespace OpsFlow.Application.DTOs.Comments;
 
 public class CreateCommentDto
 {
-  public string Body { get; set; } = string.Empty;
+  public string Content { get; set; } = string.Empty;
 }

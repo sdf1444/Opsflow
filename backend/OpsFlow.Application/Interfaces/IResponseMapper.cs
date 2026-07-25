@@ -11,6 +11,8 @@ public interface IResponseMapper
 
   List<RequestDto> MapRequests(IEnumerable<Request> requests);
 
+  RequestDetailDto MapRequestDetail(Request request);
+
   AuditLogDto MapAuditLog(AuditLog auditLog);
 
   List<AuditLogDto> MapAuditLogs(IEnumerable<AuditLog> auditLogs);

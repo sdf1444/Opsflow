@@ -25,6 +25,10 @@ public class Request : BaseEntity
 
   public DateTime? ReviewedAt { get; set; }
 
+  public DateTime? CancelledAt { get; set; }
+
+  public string? RejectionReason { get; set; }
+
   public ICollection<RequestComment> Comments { get; set; }
     = new List<RequestComment>();
 

@@ -33,6 +33,65 @@ public class ResponseMapper : IResponseMapper
     return requests.Select(MapRequest).ToList();
   }
 
+  public RequestDetailDto MapRequestDetail(Request request)
+  {
+    return new RequestDetailDto
+    {
+      Id = request.Id,
+      Title = request.Title,
+      Description = request.Description,
+      Category = request.Category,
+      Status = request.Status,
+      CreatedBy = new UserSummaryDto
+      {
+        Id = request.CreatedByUser.Id,
+        Name = request.CreatedByUser.Name,
+        Email = request.CreatedByUser.Email
+      },
+      AssignedReviewer = request.AssignedReviewer is null ? null : new UserSummaryDto
+      {
+        Id = request.AssignedReviewer.Id,
+        Name = request.AssignedReviewer.Name,
+        Email = request.AssignedReviewer.Email
+      },
+      CreatedAt = request.CreatedAt,
+      UpdatedAt = request.UpdatedAt,
+      SubmittedAt = request.SubmittedAt,
+      ReviewedAt = request.ReviewedAt,
+      CancelledAt = request.CancelledAt,
+      RejectionReason = request.RejectionReason,
+      Comments = request.Comments
+        .OrderBy(c => c.CreatedAt)
+        .Select(c => new CommentDetailDto
+        {
+          Id = c.Id,
+          Content = c.Content,
+          CreatedAt = c.CreatedAt,
+          Author = new UserSummaryDto
+          {
+            Id = c.User.Id,
+            Name = c.User.Name,
+            Email = c.User.Email
+          }
+        }).ToList(),
+      AuditLogs = request.AuditLogs
+        .OrderBy(a => a.CreatedAt)
+        .Select(a => new AuditEntryDetailDto
+        {
+          Id = a.Id,
+          Action = a.Action,
+          Description = string.IsNullOrWhiteSpace(a.Description) ? null : a.Description,
+          CreatedAt = a.CreatedAt,
+          PerformedBy = new UserSummaryDto
+          {
+            Id = a.User.Id,
+            Name = a.User.Name,
+            Email = a.User.Email
+          }
+        }).ToList()
+    };
+  }
+
   public AuditLogDto MapAuditLog(AuditLog auditLog)
   {
     return new AuditLogDto
@@ -59,7 +118,7 @@ public class ResponseMapper : IResponseMapper
       Id = comment.Id,
       AuthorName = authorName,
       AuthorEmail = authorEmail,
-      Body = comment.Body,
+      Content = comment.Content,
       CreatedAt = comment.CreatedAt
     };
   }
@@ -74,7 +133,7 @@ public class ResponseMapper : IResponseMapper
         Id = comment.Id,
         AuthorName = author?.Name ?? string.Empty,
         AuthorEmail = author?.Email ?? string.Empty,
-        Body = comment.Body,
+        Content = comment.Content,
         CreatedAt = comment.CreatedAt
       };
     }).ToList();

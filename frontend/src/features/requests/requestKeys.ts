@@ -10,4 +10,8 @@ export const requestKeys = {
   details: () => [...requestKeys.all, "detail"] as const,
 
   detail: (id: string) => [...requestKeys.details(), id] as const,
+
+  comments: (id: string) => [...requestKeys.detail(id), "comments"] as const,
+
+  auditLogs: (id: string) => [...requestKeys.detail(id), "audit"] as const,
 };

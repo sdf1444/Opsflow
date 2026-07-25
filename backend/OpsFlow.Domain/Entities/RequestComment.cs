@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using OpsFlow.Domain.Common;
 
 namespace OpsFlow.Domain.Entities;
@@ -12,5 +13,6 @@ public class RequestComment : BaseEntity
 
   public User User { get; set; } = null!;
 
-  public string Body { get; set; } = string.Empty;
+  [Column("Body")]
+  public string Content { get; set; } = string.Empty;
 }

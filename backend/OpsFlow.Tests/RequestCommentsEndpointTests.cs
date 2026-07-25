@@ -61,7 +61,7 @@ public class RequestCommentsEndpointTests : IAsyncLifetime
         }
 
         var client = _factory.CreateAuthenticatedClient(owner.Id, "Employee");
-        var payload = JsonSerializer.Serialize(new { body = "Please provide a quotation before approval." });
+        var payload = JsonSerializer.Serialize(new { content = "Please provide a quotation before approval." });
         using var content = new StringContent(payload, Encoding.UTF8, "application/json");
 
         var response = await client.PostAsync($"/api/requests/{request.Id}/comments", content);
@@ -75,7 +75,7 @@ public class RequestCommentsEndpointTests : IAsyncLifetime
         Assert.NotEqual(Guid.Empty, idProp.GetGuid());
         Assert.Equal("Owner User", doc.RootElement.GetProperty("authorName").GetString());
         Assert.Equal("owner@example.com", doc.RootElement.GetProperty("authorEmail").GetString());
-        Assert.Equal("Please provide a quotation before approval.", doc.RootElement.GetProperty("body").GetString());
+        Assert.Equal("Please provide a quotation before approval.", doc.RootElement.GetProperty("content").GetString());
         Assert.True(doc.RootElement.TryGetProperty("createdAt", out _));
 
         await using var verificationScope = _factory.Services.CreateAsyncScope();
@@ -131,7 +131,7 @@ public class RequestCommentsEndpointTests : IAsyncLifetime
             RequestId = request.Id,
             UserId = manager.Id,
             User = manager,
-            Body = "Please provide a quotation before approval.",
+            Content = "Please provide a quotation before approval.",
             CreatedAt = DateTime.UtcNow.AddMinutes(-15),
             UpdatedAt = DateTime.UtcNow.AddMinutes(-15)
         };
@@ -142,7 +142,7 @@ public class RequestCommentsEndpointTests : IAsyncLifetime
             RequestId = request.Id,
             UserId = owner.Id,
             User = owner,
-            Body = "Quotation attached.",
+            Content = "Quotation attached.",
             CreatedAt = DateTime.UtcNow.AddMinutes(-5),
             UpdatedAt = DateTime.UtcNow.AddMinutes(-5)
         };
@@ -174,11 +174,11 @@ public class RequestCommentsEndpointTests : IAsyncLifetime
 
         Assert.Equal("Manager User", firstItem.GetProperty("authorName").GetString());
         Assert.Equal("manager@example.com", firstItem.GetProperty("authorEmail").GetString());
-        Assert.Equal("Please provide a quotation before approval.", firstItem.GetProperty("body").GetString());
+        Assert.Equal("Please provide a quotation before approval.", firstItem.GetProperty("content").GetString());
 
         Assert.Equal("Employee User", secondItem.GetProperty("authorName").GetString());
         Assert.Equal("employee@example.com", secondItem.GetProperty("authorEmail").GetString());
-        Assert.Equal("Quotation attached.", secondItem.GetProperty("body").GetString());
+        Assert.Equal("Quotation attached.", secondItem.GetProperty("content").GetString());
 
         var firstCreated = firstItem.GetProperty("createdAt").GetDateTime();
         var secondCreated = secondItem.GetProperty("createdAt").GetDateTime();
@@ -233,7 +233,7 @@ public class RequestCommentsEndpointTests : IAsyncLifetime
         }
 
         var client = _factory.CreateAuthenticatedClient(manager.Id, "Manager");
-        var payload = JsonSerializer.Serialize(new { body = "Please attach receipts." });
+        var payload = JsonSerializer.Serialize(new { content = "Please attach receipts." });
         using var content = new StringContent(payload, Encoding.UTF8, "application/json");
 
         var response = await client.PostAsync($"/api/requests/{request.Id}/comments", content);
@@ -287,7 +287,7 @@ public class RequestCommentsEndpointTests : IAsyncLifetime
         }
 
         var client = _factory.CreateAuthenticatedClient(admin.Id, "Admin");
-        var payload = JsonSerializer.Serialize(new { body = "Approved from policy perspective." });
+        var payload = JsonSerializer.Serialize(new { content = "Approved from policy perspective." });
         using var content = new StringContent(payload, Encoding.UTF8, "application/json");
 
         var response = await client.PostAsync($"/api/requests/{request.Id}/comments", content);
@@ -332,7 +332,7 @@ public class RequestCommentsEndpointTests : IAsyncLifetime
         }
 
         var client = _factory.CreateAuthenticatedClient(owner.Id, "Employee");
-        var payload = JsonSerializer.Serialize(new { body = commentBody });
+        var payload = JsonSerializer.Serialize(new { content = commentBody });
         using var content = new StringContent(payload, Encoding.UTF8, "application/json");
 
         var response = await client.PostAsync($"/api/requests/{request.Id}/comments", content);
@@ -342,10 +342,10 @@ public class RequestCommentsEndpointTests : IAsyncLifetime
         await using var verificationScope = _factory.Services.CreateAsyncScope();
         var verificationDb = verificationScope.ServiceProvider.GetRequiredService<AppDbContext>();
         var savedComment = verificationDb.RequestComments
-            .SingleOrDefault(c => c.RequestId == request.Id && c.UserId == owner.Id && c.Body == commentBody);
+            .SingleOrDefault(c => c.RequestId == request.Id && c.UserId == owner.Id && c.Content == commentBody);
 
         Assert.NotNull(savedComment);
-        Assert.Equal(commentBody, savedComment!.Body);
+        Assert.Equal(commentBody, savedComment!.Content);
         Assert.Equal(request.Id, savedComment.RequestId);
         Assert.Equal(owner.Id, savedComment.UserId);
     }
@@ -358,7 +358,7 @@ public class RequestCommentsEndpointTests : IAsyncLifetime
 
         var getResponse = await client.GetAsync($"/api/requests/{requestId}/comments");
 
-        var payload = JsonSerializer.Serialize(new { body = "Test" });
+        var payload = JsonSerializer.Serialize(new { content = "Test" });
         using var content = new StringContent(payload, Encoding.UTF8, "application/json");
         var postResponse = await client.PostAsync($"/api/requests/{requestId}/comments", content);
 
@@ -412,7 +412,7 @@ public class RequestCommentsEndpointTests : IAsyncLifetime
         }
 
         var client = _factory.CreateAuthenticatedClient(otherEmployee.Id, "Employee");
-        var payload = JsonSerializer.Serialize(new { body = "Attempting to comment" });
+        var payload = JsonSerializer.Serialize(new { content = "Attempting to comment" });
         using var content = new StringContent(payload, Encoding.UTF8, "application/json");
 
         var response = await client.PostAsync($"/api/requests/{request.Id}/comments", content);
@@ -455,7 +455,7 @@ public class RequestCommentsEndpointTests : IAsyncLifetime
         }
 
         var client = _factory.CreateAuthenticatedClient(owner.Id, "Employee");
-        var payload = JsonSerializer.Serialize(new { body = "   " });
+        var payload = JsonSerializer.Serialize(new { content = "   " });
         using var content = new StringContent(payload, Encoding.UTF8, "application/json");
 
         var response = await client.PostAsync($"/api/requests/{request.Id}/comments", content);

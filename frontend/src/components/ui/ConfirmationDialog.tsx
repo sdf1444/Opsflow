@@ -15,6 +15,7 @@ type Props = {
   confirmText?: string;
   cancelText?: string;
   confirmColor?: "primary" | "error" | "warning";
+  confirmDisabled?: boolean;
   isConfirming?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -28,6 +29,7 @@ export default function ConfirmationDialog({
   confirmText = "Confirm",
   cancelText = "Cancel",
   confirmColor = "primary",
+  confirmDisabled = false,
   isConfirming = false,
   onConfirm,
   onCancel,
@@ -44,7 +46,7 @@ export default function ConfirmationDialog({
         <Button onClick={onCancel} disabled={isConfirming}>
           {cancelText}
         </Button>
-        <Button onClick={onConfirm} color={confirmColor} variant="contained" disabled={isConfirming}>
+        <Button onClick={onConfirm} color={confirmColor} variant="contained" disabled={isConfirming || confirmDisabled}>
           {confirmText}
         </Button>
       </DialogActions>

@@ -4,10 +4,11 @@ import MainLayout from "../layouts/MainLayout";
 import DashboardPage from "../features/dashboard/DashboardPage";
 import AdminPage from "../pages/AdminPage";
 import ApprovalsPage from "../pages/ApprovalsPage";
+import EditRequestPage from "../pages/EditRequestPage";
 import LoginPage from "../pages/LoginPage";
 import NotFoundPage from "../pages/NotFoundPage";
 import ProfilePage from "../pages/ProfilePage";
-import RequestDetailPage from "../pages/RequestDetailPage";
+import RequestDetailPage from "../features/requests/RequestDetailPage";
 import RequestsPage from "../features/requests/RequestsPage";
 import CreateRequestPage from "../features/requests/CreateRequestPage";
 
@@ -29,6 +30,7 @@ export default function AppRouter() {
         <Route path="requests" element={<RequestsPage />} />
         <Route path="requests/new" element={<CreateRequestPage />} />
         <Route path="requests/:id" element={<RequestDetailPage />} />
+        <Route path="requests/:id/edit" element={<EditRequestPage />} />
         <Route path="approvals" element={<ApprovalsPage />} />
         <Route path="admin" element={<AdminPage />} />
         <Route path="profile" element={<ProfilePage />} />

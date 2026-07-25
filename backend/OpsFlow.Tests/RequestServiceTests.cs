@@ -187,11 +187,108 @@ public class RequestServiceTests
 
         var service = CreateService(new[] { manager, employee }, new[] { request });
 
-        var rejected = await service.RejectAsync(manager.Id, request.Id, CancellationToken.None);
+        var rejected = await service.RejectAsync(manager.Id, request.Id, "Budget not justified.", CancellationToken.None);
 
         Assert.Equal(RequestStatus.Rejected, rejected.Status);
         Assert.NotNull(rejected.ReviewedAt);
+        Assert.Equal("Budget not justified.", rejected.RejectionReason);
         Assert.Equal("RequestRejected", rejected.AuditLogs.Last().Action);
+    }
+
+    [Fact]
+    public async Task NonOwnerCannotSubmitRequest()
+    {
+        var owner = new User { Id = Guid.NewGuid(), Name = "Owner", Email = "owner@test", Role = UserRole.Employee };
+        var other = new User { Id = Guid.NewGuid(), Name = "Other", Email = "other@test", Role = UserRole.Employee };
+        var manager = new User { Id = Guid.NewGuid(), Name = "Manager", Email = "manager@test", Role = UserRole.Manager };
+        var request = new Request
+        {
+            Id = Guid.NewGuid(),
+            Title = "Submit title",
+            Description = "Submit description",
+            Category = RequestCategory.Expense,
+            Status = RequestStatus.Draft,
+            CreatedByUserId = owner.Id,
+            AssignedReviewerId = manager.Id,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var service = CreateService(new[] { owner, other, manager }, new[] { request });
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () =>
+            await service.SubmitAsync(other.Id, request.Id, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task UnassignedManagerCannotApproveRequest()
+    {
+        var assignedManager = new User { Id = Guid.NewGuid(), Name = "Assigned", Email = "assigned@test", Role = UserRole.Manager };
+        var unassignedManager = new User { Id = Guid.NewGuid(), Name = "Unassigned", Email = "unassigned@test", Role = UserRole.Manager };
+        var employee = new User { Id = Guid.NewGuid(), Name = "Employee", Email = "employee@test", Role = UserRole.Employee };
+        var request = new Request
+        {
+            Id = Guid.NewGuid(),
+            Title = "Approve title",
+            Description = "Approve description",
+            Category = RequestCategory.Training,
+            Status = RequestStatus.Submitted,
+            CreatedByUserId = employee.Id,
+            AssignedReviewerId = assignedManager.Id,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var service = CreateService(new[] { assignedManager, unassignedManager, employee }, new[] { request });
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () =>
+            await service.ApproveAsync(unassignedManager.Id, request.Id, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task ApprovedRequestCannotBeCancelled()
+    {
+        var employee = new User { Id = Guid.NewGuid(), Name = "Employee", Email = "employee@test", Role = UserRole.Employee };
+        var request = new Request
+        {
+            Id = Guid.NewGuid(),
+            Title = "Cancel title",
+            Description = "Cancel description",
+            Category = RequestCategory.Expense,
+            Status = RequestStatus.Approved,
+            CreatedByUserId = employee.Id,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var service = CreateService(new[] { employee }, new[] { request });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await service.CancelAsync(employee.Id, request.Id, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task RejectedRequestCannotBeApproved()
+    {
+        var manager = new User { Id = Guid.NewGuid(), Name = "Manager", Email = "manager@test", Role = UserRole.Manager };
+        var employee = new User { Id = Guid.NewGuid(), Name = "Employee", Email = "employee@test", Role = UserRole.Employee };
+        var request = new Request
+        {
+            Id = Guid.NewGuid(),
+            Title = "Rejected title",
+            Description = "Rejected description",
+            Category = RequestCategory.Expense,
+            Status = RequestStatus.Rejected,
+            CreatedByUserId = employee.Id,
+            AssignedReviewerId = manager.Id,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var service = CreateService(new[] { manager, employee }, new[] { request });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await service.ApproveAsync(manager.Id, request.Id, CancellationToken.None));
     }
 
     [Fact]
@@ -294,10 +391,10 @@ public class RequestServiceTests
 
         var comment = await service.AddCommentAsync(employee.Id, request.Id, new CreateCommentDto
         {
-            Body = "Please review soon."
+            Content = "Please review soon."
         }, CancellationToken.None);
 
-        Assert.Equal("Please review soon.", comment.Body);
+        Assert.Equal("Please review soon.", comment.Content);
         Assert.Equal("Employee", comment.AuthorName);
         Assert.Contains(request.AuditLogs, a => a.Action == "CommentAdded");
     }
@@ -321,7 +418,7 @@ public class RequestServiceTests
         var service = CreateService(new[] { employee }, new[] { request });
 
         await Assert.ThrowsAsync<ValidationException>(async () =>
-            await service.AddCommentAsync(employee.Id, request.Id, new CreateCommentDto { Body = "   " }, CancellationToken.None));
+            await service.AddCommentAsync(employee.Id, request.Id, new CreateCommentDto { Content = "   " }, CancellationToken.None));
     }
 
     [Fact]
@@ -344,7 +441,7 @@ public class RequestServiceTests
         var service = CreateService(new[] { owner, other }, new[] { request });
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(async () =>
-            await service.AddCommentAsync(other.Id, request.Id, new CreateCommentDto { Body = "Not allowed" }, CancellationToken.None));
+            await service.AddCommentAsync(other.Id, request.Id, new CreateCommentDto { Content = "Not allowed" }, CancellationToken.None));
     }
 
     [Fact]
@@ -371,7 +468,7 @@ public class RequestServiceTests
             RequestId = request.Id,
             UserId = owner.Id,
             User = owner,
-            Body = "First",
+            Content = "First",
             CreatedAt = DateTime.UtcNow.AddMinutes(-10),
             UpdatedAt = DateTime.UtcNow.AddMinutes(-10)
         });
@@ -382,7 +479,7 @@ public class RequestServiceTests
             RequestId = request.Id,
             UserId = manager.Id,
             User = manager,
-            Body = "Second",
+            Content = "Second",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         });
@@ -392,8 +489,8 @@ public class RequestServiceTests
         var comments = await service.GetCommentsAsync(owner.Id, request.Id, CancellationToken.None);
 
         Assert.Equal(2, comments.Count);
-        Assert.Equal("First", comments[0].Body);
-        Assert.Equal("Second", comments[1].Body);
+        Assert.Equal("First", comments[0].Content);
+        Assert.Equal("Second", comments[1].Content);
     }
 
     private static RequestService CreateService(IEnumerable<User> users, IEnumerable<Request>? requests = null)

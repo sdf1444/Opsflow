@@ -82,8 +82,8 @@ public class RequestRepository : IRequestRepository
     return await _dbContext.Requests
       .Include(r => r.CreatedByUser)
       .Include(r => r.AssignedReviewer)
-      .Include(r => r.Comments)
-      .Include(r => r.AuditLogs)
+      .Include(r => r.Comments).ThenInclude(c => c.User)
+      .Include(r => r.AuditLogs).ThenInclude(a => a.User)
       .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
   }
 

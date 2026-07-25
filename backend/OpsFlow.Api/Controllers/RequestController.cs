@@ -95,7 +95,7 @@ public class RequestController : ControllerBase
 
   [HttpPost("{id}/reject")]
   [Authorize(Policy = "ManagerOrAdmin")]
-  public async Task<IActionResult> Reject(Guid id, CancellationToken cancellationToken)
+  public async Task<IActionResult> Reject(Guid id, [FromBody] RejectRequestDto requestDto, CancellationToken cancellationToken)
   {
     var userIdValue = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
     if (!Guid.TryParse(userIdValue, out var userId))
@@ -103,7 +103,7 @@ public class RequestController : ControllerBase
       return Unauthorized();
     }
 
-    var request = await _requestService.RejectAsync(userId, id, cancellationToken);
+    var request = await _requestService.RejectAsync(userId, id, requestDto.Reason, cancellationToken);
     return Ok(_responseMapper.MapRequest(request));
   }
 
@@ -179,7 +179,7 @@ public class RequestController : ControllerBase
       return Forbid();
     }
 
-    return Ok(_responseMapper.MapRequest(request));
+    return Ok(_responseMapper.MapRequestDetail(request));
   }
 
   [HttpGet("{id}/audit")]

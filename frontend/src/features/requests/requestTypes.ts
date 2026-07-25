@@ -58,3 +58,50 @@ export interface CreateRequestResponse {
   id: string;
   status: RequestStatus;
 }
+
+export type RequestUserSummary = {
+  id: string;
+  name: string;
+  email: string;
+};
+
+export type RequestComment = {
+  id: string;
+  content: string;
+  createdAt: string;
+  author: RequestUserSummary;
+};
+
+export type RequestAuditEntry = {
+  id: string;
+  action: string;
+  description: string | null;
+  createdAt: string;
+  performedBy: RequestUserSummary;
+};
+
+export type RequestDetail = {
+  id: string;
+  title: string;
+  description: string;
+  category: RequestCategory;
+  status: RequestStatus;
+  createdBy: RequestUserSummary;
+  assignedReviewer: RequestUserSummary | null;
+  createdAt: string;
+  updatedAt: string;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  cancelledAt: string | null;
+  rejectionReason: string | null;
+  comments: RequestComment[];
+  auditLogs: RequestAuditEntry[];
+};
+
+export type AddCommentRequest = {
+  content: string;
+};
+
+export type RejectRequestRequest = {
+  reason: string;
+};

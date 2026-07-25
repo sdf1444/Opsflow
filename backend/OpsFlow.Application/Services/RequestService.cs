@@ -141,9 +141,14 @@ public class RequestService
       throw new InvalidOperationException("Request not found.");
     }
 
-    if (request.Status != RequestStatus.Submitted)
+    if (request.Status != RequestStatus.Submitted && request.Status != RequestStatus.UnderReview)
     {
-      throw new InvalidOperationException("Only submitted requests can be approved.");
+      throw new InvalidOperationException("Only submitted or under review requests can be approved.");
+    }
+
+    if (user.Role == UserRole.Manager && request.AssignedReviewerId != userId)
+    {
+      throw new UnauthorizedAccessException("Only the assigned reviewer can approve this request.");
     }
 
     request.Status = RequestStatus.Approved;
@@ -155,7 +160,7 @@ public class RequestService
     return request;
   }
 
-  public async Task<Request> RejectAsync(Guid userId, Guid requestId, CancellationToken cancellationToken)
+  public async Task<Request> RejectAsync(Guid userId, Guid requestId, string reason, CancellationToken cancellationToken)
   {
     var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
     if (user is null)
@@ -174,14 +179,31 @@ public class RequestService
       throw new InvalidOperationException("Request not found.");
     }
 
-    if (request.Status != RequestStatus.Submitted)
+    if (request.Status != RequestStatus.Submitted && request.Status != RequestStatus.UnderReview)
     {
-      throw new InvalidOperationException("Only submitted requests can be rejected.");
+      throw new InvalidOperationException("Only submitted or under review requests can be rejected.");
+    }
+
+    if (user.Role == UserRole.Manager && request.AssignedReviewerId != userId)
+    {
+      throw new UnauthorizedAccessException("Only the assigned reviewer can reject this request.");
+    }
+
+    var normalizedReason = reason?.Trim() ?? string.Empty;
+    if (normalizedReason.Length < 5)
+    {
+      throw new ValidationException("Rejection reason must be at least 5 characters.");
+    }
+
+    if (normalizedReason.Length > 1000)
+    {
+      throw new ValidationException("Rejection reason cannot exceed 1000 characters.");
     }
 
     request.Status = RequestStatus.Rejected;
     request.ReviewedAt = DateTime.UtcNow;
     request.UpdatedAt = DateTime.UtcNow;
+    request.RejectionReason = normalizedReason;
 
     await _auditService.LogAsync(request.Id, userId, "RequestRejected", "Rejected by manager.", null, cancellationToken);
     await _requestRepository.SaveChangesAsync(cancellationToken);
@@ -225,20 +247,22 @@ public class RequestService
       throw new InvalidOperationException("Request not found.");
     }
 
-    if (request.CreatedByUserId != userId)
+    if (request.CreatedByUserId != userId && user.Role != UserRole.Admin)
     {
       throw new UnauthorizedAccessException("You are not authorized to cancel this request.");
     }
 
-    if (request.Status != RequestStatus.Draft && request.Status != RequestStatus.Submitted)
+    if (request.Status == RequestStatus.Approved || request.Status == RequestStatus.Rejected || request.Status == RequestStatus.Cancelled)
     {
-      throw new InvalidOperationException("Only draft or submitted requests can be cancelled.");
+      throw new InvalidOperationException("Approved, rejected, or already cancelled requests cannot be cancelled.");
     }
 
     request.Status = RequestStatus.Cancelled;
+    request.CancelledAt = DateTime.UtcNow;
     request.UpdatedAt = DateTime.UtcNow;
 
-    await _auditService.LogAsync(request.Id, userId, "RequestCancelled", "Cancelled by owner.", null, cancellationToken);
+    var cancelledBy = request.CreatedByUserId == userId ? "owner" : "admin";
+    await _auditService.LogAsync(request.Id, userId, "RequestCancelled", $"Cancelled by {cancelledBy}.", null, cancellationToken);
     await _requestRepository.SaveChangesAsync(cancellationToken);
     return request;
   }
@@ -262,14 +286,21 @@ public class RequestService
       throw new UnauthorizedAccessException("You are not authorized to comment on this request.");
     }
 
-    if (string.IsNullOrWhiteSpace(dto.Body))
+    if (string.IsNullOrWhiteSpace(dto.Content))
     {
       throw new ValidationException("Comment is required.");
     }
 
-    if (dto.Body.Length > 2000)
+    var normalizedContent = dto.Content.Trim();
+
+    if (normalizedContent.Length < 2)
     {
-      throw new ValidationException("Comment cannot exceed 2000 characters.");
+      throw new ValidationException("Comment must be at least 2 characters.");
+    }
+
+    if (normalizedContent.Length > 1000)
+    {
+      throw new ValidationException("Comment cannot exceed 1000 characters.");
     }
 
     var now = DateTime.UtcNow;
@@ -278,7 +309,7 @@ public class RequestService
       Id = Guid.NewGuid(),
       RequestId = requestId,
       UserId = userId,
-      Body = dto.Body,
+      Content = normalizedContent,
       CreatedAt = now,
       UpdatedAt = now
     };

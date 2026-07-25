@@ -12,7 +12,8 @@ public class RequestCommentConfiguration : IEntityTypeConfiguration<RequestComme
 
     builder.HasKey(x => x.Id);
 
-    builder.Property(x => x.Body)
+    builder.Property(x => x.Content)
+      .HasColumnName("Body")
       .HasMaxLength(2000)
       .IsRequired();
 

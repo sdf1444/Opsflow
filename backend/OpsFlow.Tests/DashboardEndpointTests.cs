@@ -192,7 +192,7 @@ public class DashboardEndpointTests : IAsyncLifetime
                 Id = Guid.NewGuid(),
                 RequestId = req1.Id,
                 UserId = employee.Id,
-                Body = "Comment",
+                Content = "Comment",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             });
