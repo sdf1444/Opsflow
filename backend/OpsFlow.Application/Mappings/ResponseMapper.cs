@@ -17,6 +17,8 @@ public class ResponseMapper : IResponseMapper
       Description = request.Description,
       Category = request.Category,
       Status = request.Status,
+      CreatedByName = request.CreatedByUser?.Name ?? string.Empty,
+      AssignedReviewerName = request.AssignedReviewer?.Name,
       CreatedByUserId = request.CreatedByUserId,
       CreatedAt = request.CreatedAt,
       UpdatedAt = request.UpdatedAt,

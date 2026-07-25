@@ -43,7 +43,7 @@ public class RequestListEndpointTests : IClassFixture<RequestAuditEndpointTests.
         await ResetAndSeedAsync(new[] { manager, owner }, requests);
 
         var client = _factory.CreateAuthenticatedClient(manager.Id, "Manager");
-        var response = await client.GetAsync("/api/requests?page=2&pageSize=2&category=Equipment&sort=updatedAt_desc");
+        var response = await client.GetAsync("/api/requests?page=2&pageSize=2&category=Equipment&sortBy=updatedAt&sortDirection=desc");
 
         response.EnsureSuccessStatusCode();
 
@@ -75,7 +75,7 @@ public class RequestListEndpointTests : IClassFixture<RequestAuditEndpointTests.
         await ResetAndSeedAsync(new[] { manager, owner }, requests);
 
         var client = _factory.CreateAuthenticatedClient(manager.Id, "Manager");
-        var response = await client.GetAsync("/api/requests?page=1&pageSize=20&status=Submitted&category=Other&sort=updatedAt_desc");
+        var response = await client.GetAsync("/api/requests?page=1&pageSize=20&status=Submitted&category=Other&sortBy=updatedAt&sortDirection=desc");
 
         response.EnsureSuccessStatusCode();
 
@@ -87,7 +87,7 @@ public class RequestListEndpointTests : IClassFixture<RequestAuditEndpointTests.
 
         foreach (var item in items.EnumerateArray())
         {
-            Assert.Equal((int)RequestStatus.Submitted, item.GetProperty("status").GetInt32());
+            Assert.Equal("Submitted", item.GetProperty("status").GetString());
         }
     }
 
@@ -107,7 +107,7 @@ public class RequestListEndpointTests : IClassFixture<RequestAuditEndpointTests.
         await ResetAndSeedAsync(new[] { manager, owner }, requests);
 
         var client = _factory.CreateAuthenticatedClient(manager.Id, "Manager");
-        var response = await client.GetAsync("/api/requests?page=1&pageSize=10&category=Training&sort=updatedAt_asc");
+        var response = await client.GetAsync("/api/requests?page=1&pageSize=10&category=Training&sortBy=updatedAt&sortDirection=asc");
 
         response.EnsureSuccessStatusCode();
 
@@ -120,6 +120,58 @@ public class RequestListEndpointTests : IClassFixture<RequestAuditEndpointTests.
     }
 
     [Fact]
+    public async Task GetRequests_SupportsSearchFiltering()
+    {
+        var manager = NewUser("Manager", "manager.search@test", UserRole.Manager);
+        var owner = NewUser("Employee", "employee.search@test", UserRole.Employee);
+
+        var requests = new List<Request>
+        {
+            NewRequest(owner, manager, "Laptop replacement", RequestStatus.Draft, RequestCategory.Equipment, DateTime.UtcNow.AddMinutes(1)),
+            NewRequest(owner, manager, "Security training", RequestStatus.Draft, RequestCategory.Training, DateTime.UtcNow.AddMinutes(2)),
+            NewRequest(owner, manager, "Chair replacement", RequestStatus.Draft, RequestCategory.Equipment, DateTime.UtcNow.AddMinutes(3))
+        };
+
+        requests[0].Description = "New laptop for frontend work";
+
+        await ResetAndSeedAsync(new[] { manager, owner }, requests);
+
+        var client = _factory.CreateAuthenticatedClient(manager.Id, "Manager");
+        var response = await client.GetAsync("/api/requests?page=1&pageSize=10&search=laptop&sortBy=updatedAt&sortDirection=desc");
+
+        response.EnsureSuccessStatusCode();
+
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(1, doc.RootElement.GetProperty("totalCount").GetInt32());
+        var items = doc.RootElement.GetProperty("items");
+        Assert.Single(items.EnumerateArray());
+        Assert.Equal("Laptop replacement", items[0].GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public async Task GetRequests_EmployeeSeesOwnRequestsOnly()
+    {
+        var employee = NewUser("Employee", "employee.own@test", UserRole.Employee);
+        var manager = NewUser("Manager", "manager.own@test", UserRole.Manager);
+
+        var employeeRequest = NewRequest(employee, manager, "Employee request", RequestStatus.Submitted, RequestCategory.Other, DateTime.UtcNow.AddMinutes(2));
+        var managerRequest = NewRequest(manager, manager, "Manager request", RequestStatus.Submitted, RequestCategory.Other, DateTime.UtcNow.AddMinutes(1));
+
+        await ResetAndSeedAsync(new[] { employee, manager }, new[] { employeeRequest, managerRequest });
+
+        var client = _factory.CreateAuthenticatedClient(employee.Id, "Employee");
+        var response = await client.GetAsync("/api/requests?page=1&pageSize=10&sortBy=updatedAt&sortDirection=desc");
+
+        response.EnsureSuccessStatusCode();
+
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(1, doc.RootElement.GetProperty("totalCount").GetInt32());
+        var items = doc.RootElement.GetProperty("items");
+        Assert.Single(items.EnumerateArray());
+        Assert.Equal("Employee request", items[0].GetProperty("title").GetString());
+    }
+
+    [Fact]
     public async Task GetRequests_InvalidSortReturnsBadRequest()
     {
         var manager = NewUser("Manager", "manager.invalidsort@test", UserRole.Manager);
@@ -127,7 +179,7 @@ public class RequestListEndpointTests : IClassFixture<RequestAuditEndpointTests.
         await ResetAndSeedAsync(new[] { manager }, Array.Empty<Request>());
 
         var client = _factory.CreateAuthenticatedClient(manager.Id, "Manager");
-        var response = await client.GetAsync("/api/requests?sort=not_supported");
+        var response = await client.GetAsync("/api/requests?sortBy=not_supported&sortDirection=desc");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 

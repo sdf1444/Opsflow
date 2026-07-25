@@ -6,6 +6,7 @@ using OpsFlow.Application.Services;
 using MediatR;
 using OpsFlow.Application.Requests.Commands;
 using OpsFlow.Application.Interfaces;
+using OpsFlow.Domain.Enums;
 
 namespace OpsFlow.Api.Controllers;
 
@@ -106,10 +107,15 @@ public class RequestController : ControllerBase
   }
 
   [HttpGet]
-  [Authorize(Policy = "ManagerOrAdmin")]
   public async Task<IActionResult> GetAll([FromQuery] RequestListQueryDto query, CancellationToken cancellationToken)
   {
-    var (requests, totalCount, page, pageSize) = await _requestService.GetAllAsync(query, cancellationToken);
+    var userIdValue = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (!Guid.TryParse(userIdValue, out var userId))
+    {
+      return Unauthorized();
+    }
+
+    var (requests, totalCount, page, pageSize) = await _requestService.GetAllAsync(userId, query, cancellationToken);
     var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling((double)totalCount / pageSize);
 
     var response = new PagedResultDto<RequestDto>
@@ -149,10 +155,27 @@ public class RequestController : ControllerBase
   [HttpGet("{id}")]
   public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
   {
+    var userIdValue = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (!Guid.TryParse(userIdValue, out var userId))
+    {
+      return Unauthorized();
+    }
+
+    var roleValue = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+    if (!Enum.TryParse<UserRole>(roleValue, ignoreCase: true, out var role))
+    {
+      return Forbid();
+    }
+
     var request = await _requestService.GetByIdAsync(id, cancellationToken);
     if (request is null)
     {
       return NotFound();
+    }
+
+    if (!CanViewRequest(role, userId, request))
+    {
+      return Forbid();
     }
 
     return Ok(_responseMapper.MapRequest(request));
@@ -210,5 +233,16 @@ public class RequestController : ControllerBase
 
     var comments = await _requestService.GetCommentsAsync(userId, id, cancellationToken);
     return Ok(comments);
+  }
+
+  private static bool CanViewRequest(UserRole role, Guid userId, OpsFlow.Domain.Entities.Request request)
+  {
+    return role switch
+    {
+      UserRole.Admin => true,
+      UserRole.Manager => request.AssignedReviewerId == userId || request.CreatedByUserId == userId,
+      UserRole.Employee => request.CreatedByUserId == userId,
+      _ => false
+    };
   }
 }

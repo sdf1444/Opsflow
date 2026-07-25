@@ -26,9 +26,19 @@ public class RequestRepository : IRequestRepository
     await _dbContext.RequestComments.AddAsync(comment, cancellationToken);
   }
 
-  public async Task<(List<Request> Requests, int TotalCount)> GetAllAsync(RequestListQueryDto query, CancellationToken cancellationToken)
+  public async Task<(List<Request> Requests, int TotalCount)> GetAllAsync(RequestListQueryDto query, Guid currentUserId, UserRole currentUserRole, CancellationToken cancellationToken)
   {
     var requestQuery = _dbContext.Requests.AsQueryable();
+
+    requestQuery = ApplyVisibilityFilter(requestQuery, currentUserId, currentUserRole);
+
+    if (!string.IsNullOrWhiteSpace(query.Search))
+    {
+      var search = query.Search.Trim();
+      requestQuery = requestQuery.Where(r =>
+        EF.Functions.ILike(r.Title, $"%{search}%") ||
+        EF.Functions.ILike(r.Description, $"%{search}%"));
+    }
 
     if (query.Status.HasValue)
     {
@@ -40,7 +50,7 @@ public class RequestRepository : IRequestRepository
       requestQuery = requestQuery.Where(r => r.Category == query.Category.Value);
     }
 
-    requestQuery = ApplySort(requestQuery, query.Sort);
+    requestQuery = ApplySort(requestQuery, query.SortBy, query.SortDirection, query.Sort);
 
     var totalCount = await requestQuery.CountAsync(cancellationToken);
 
@@ -104,6 +114,39 @@ public class RequestRepository : IRequestRepository
       "status_asc" => query.OrderBy(r => r.Status),
       "status_desc" => query.OrderByDescending(r => r.Status),
       _ => query.OrderByDescending(r => r.UpdatedAt)
+    };
+  }
+
+  private static IQueryable<Request> ApplySort(IQueryable<Request> query, string? sortBy, string? sortDirection, string? legacySort)
+  {
+    if (!string.IsNullOrWhiteSpace(legacySort))
+    {
+      return ApplySort(query, legacySort);
+    }
+
+    var direction = string.Equals(sortDirection, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
+
+    return (sortBy ?? string.Empty).ToLowerInvariant() switch
+    {
+      "createdat" when direction == "asc" => query.OrderBy(r => r.CreatedAt),
+      "createdat" => query.OrderByDescending(r => r.CreatedAt),
+      "title" when direction == "asc" => query.OrderBy(r => r.Title),
+      "title" => query.OrderByDescending(r => r.Title),
+      "status" when direction == "asc" => query.OrderBy(r => r.Status),
+      "status" => query.OrderByDescending(r => r.Status),
+      _ when direction == "asc" => query.OrderBy(r => r.UpdatedAt),
+      _ => query.OrderByDescending(r => r.UpdatedAt)
+    };
+  }
+
+  private static IQueryable<Request> ApplyVisibilityFilter(IQueryable<Request> query, Guid currentUserId, UserRole currentUserRole)
+  {
+    return currentUserRole switch
+    {
+      UserRole.Admin => query,
+      UserRole.Manager => query.Where(r => r.AssignedReviewerId == currentUserId || r.CreatedByUserId == currentUserId),
+      UserRole.Employee => query.Where(r => r.CreatedByUserId == currentUserId),
+      _ => query.Where(r => false)
     };
   }
 }

@@ -1,6 +1,7 @@
 using System.Threading;
 using OpsFlow.Application.DTOs.Requests;
 using OpsFlow.Domain.Entities;
+using OpsFlow.Domain.Enums;
 
 namespace OpsFlow.Application.Interfaces;
 
@@ -8,7 +9,7 @@ public interface IRequestRepository
 {
   Task<Request?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
-  Task<(List<Request> Requests, int TotalCount)> GetAllAsync(RequestListQueryDto query, CancellationToken cancellationToken);
+  Task<(List<Request> Requests, int TotalCount)> GetAllAsync(RequestListQueryDto query, Guid currentUserId, UserRole currentUserRole, CancellationToken cancellationToken);
 
   Task<List<Request>> GetPendingAsync(CancellationToken cancellationToken);
 

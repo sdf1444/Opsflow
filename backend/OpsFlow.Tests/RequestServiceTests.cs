@@ -451,9 +451,25 @@ public class RequestServiceTests
             return Task.CompletedTask;
         }
 
-        public Task<(List<Request> Requests, int TotalCount)> GetAllAsync(RequestListQueryDto query, CancellationToken cancellationToken)
+        public Task<(List<Request> Requests, int TotalCount)> GetAllAsync(RequestListQueryDto query, Guid currentUserId, OpsFlow.Domain.Enums.UserRole currentUserRole, CancellationToken cancellationToken)
         {
             var requestQuery = _requests.AsQueryable();
+
+            requestQuery = currentUserRole switch
+            {
+                OpsFlow.Domain.Enums.UserRole.Admin => requestQuery,
+                OpsFlow.Domain.Enums.UserRole.Manager => requestQuery.Where(r => r.AssignedReviewerId == currentUserId || r.CreatedByUserId == currentUserId),
+                OpsFlow.Domain.Enums.UserRole.Employee => requestQuery.Where(r => r.CreatedByUserId == currentUserId),
+                _ => requestQuery.Where(r => false)
+            };
+
+            if (!string.IsNullOrWhiteSpace(query.Search))
+            {
+                var search = query.Search.Trim();
+                requestQuery = requestQuery.Where(r =>
+                    r.Title.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    r.Description.Contains(search, StringComparison.OrdinalIgnoreCase));
+            }
 
             if (query.Status.HasValue)
             {
@@ -465,16 +481,15 @@ public class RequestServiceTests
                 requestQuery = requestQuery.Where(r => r.Category == query.Category.Value);
             }
 
-            requestQuery = query.Sort?.ToLowerInvariant() switch
+            requestQuery = (query.SortBy ?? "updatedAt").ToLowerInvariant() switch
             {
-                "updatedat_asc" => requestQuery.OrderBy(r => r.UpdatedAt),
-                "updatedat_desc" => requestQuery.OrderByDescending(r => r.UpdatedAt),
-                "createdat_asc" => requestQuery.OrderBy(r => r.CreatedAt),
-                "createdat_desc" => requestQuery.OrderByDescending(r => r.CreatedAt),
-                "title_asc" => requestQuery.OrderBy(r => r.Title),
-                "title_desc" => requestQuery.OrderByDescending(r => r.Title),
-                "status_asc" => requestQuery.OrderBy(r => r.Status),
-                "status_desc" => requestQuery.OrderByDescending(r => r.Status),
+                "createdat" when string.Equals(query.SortDirection, "asc", StringComparison.OrdinalIgnoreCase) => requestQuery.OrderBy(r => r.CreatedAt),
+                "createdat" => requestQuery.OrderByDescending(r => r.CreatedAt),
+                "title" when string.Equals(query.SortDirection, "asc", StringComparison.OrdinalIgnoreCase) => requestQuery.OrderBy(r => r.Title),
+                "title" => requestQuery.OrderByDescending(r => r.Title),
+                "status" when string.Equals(query.SortDirection, "asc", StringComparison.OrdinalIgnoreCase) => requestQuery.OrderBy(r => r.Status),
+                "status" => requestQuery.OrderByDescending(r => r.Status),
+                _ when string.Equals(query.SortDirection, "asc", StringComparison.OrdinalIgnoreCase) => requestQuery.OrderBy(r => r.UpdatedAt),
                 _ => requestQuery.OrderByDescending(r => r.UpdatedAt)
             };
 

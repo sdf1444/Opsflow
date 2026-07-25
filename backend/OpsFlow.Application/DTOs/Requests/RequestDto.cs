@@ -14,6 +14,10 @@ public class RequestDto
 
   public RequestStatus Status { get; set; }
 
+  public string CreatedByName { get; set; } = string.Empty;
+
+  public string? AssignedReviewerName { get; set; }
+
   public Guid CreatedByUserId { get; set; }
 
   public DateTime CreatedAt { get; set; }

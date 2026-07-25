@@ -193,10 +193,16 @@ public class RequestService
     return await _requestRepository.GetByIdAsync(requestId, cancellationToken);
   }
 
-  public async Task<(List<Request> Requests, int TotalCount, int Page, int PageSize)> GetAllAsync(RequestListQueryDto query, CancellationToken cancellationToken)
+  public async Task<(List<Request> Requests, int TotalCount, int Page, int PageSize)> GetAllAsync(Guid userId, RequestListQueryDto query, CancellationToken cancellationToken)
   {
+    var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+    if (user is null)
+    {
+      throw new UnauthorizedAccessException("User not found.");
+    }
+
     var normalizedQuery = NormalizeListQuery(query);
-    var (requests, totalCount) = await _requestRepository.GetAllAsync(normalizedQuery, cancellationToken);
+    var (requests, totalCount) = await _requestRepository.GetAllAsync(normalizedQuery, userId, user.Role, cancellationToken);
     return (requests, totalCount, normalizedQuery.Page, normalizedQuery.PageSize);
   }
 
@@ -322,40 +328,57 @@ public class RequestService
   private static RequestListQueryDto NormalizeListQuery(RequestListQueryDto query)
   {
     var page = query.Page <= 0 ? 1 : query.Page;
-    var pageSize = query.PageSize <= 0 ? 20 : query.PageSize;
+    var pageSize = query.PageSize <= 0 ? 10 : query.PageSize;
     if (pageSize > 100)
     {
       pageSize = 100;
     }
 
-    var sort = string.IsNullOrWhiteSpace(query.Sort)
-      ? "updatedAt_desc"
-      : query.Sort.Trim();
+    var sortBy = string.IsNullOrWhiteSpace(query.SortBy) ? null : query.SortBy.Trim();
+    var sortDirection = string.IsNullOrWhiteSpace(query.SortDirection) ? null : query.SortDirection.Trim();
 
-    var supportedSorts = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    if (!string.IsNullOrWhiteSpace(query.Sort))
     {
-      "updatedAt_asc",
-      "updatedAt_desc",
-      "createdAt_asc",
-      "createdAt_desc",
-      "title_asc",
-      "title_desc",
-      "status_asc",
-      "status_desc"
+      var legacySort = query.Sort.Trim();
+      var parts = legacySort.Split('_', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+      if (parts.Length == 2)
+      {
+        sortBy = parts[0];
+        sortDirection = parts[1];
+      }
+    }
+
+    sortBy ??= "updatedAt";
+    sortDirection ??= "desc";
+
+    var supportedSortFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+      "updatedAt",
+      "createdAt",
+      "title",
+      "status"
     };
 
-    if (!supportedSorts.Contains(sort))
+    var supportedSortDirections = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
-      throw new ValidationException($"Unsupported sort '{sort}'. Use one of: {string.Join(", ", supportedSorts.OrderBy(s => s, StringComparer.OrdinalIgnoreCase))}.");
+      "asc",
+      "desc"
+    };
+
+    if (!supportedSortFields.Contains(sortBy) || !supportedSortDirections.Contains(sortDirection))
+    {
+      throw new ValidationException("Unsupported sort. Use sortBy of updatedAt, createdAt, title, or status and sortDirection of asc or desc.");
     }
 
     return new RequestListQueryDto
     {
       Page = page,
       PageSize = pageSize,
+      Search = string.IsNullOrWhiteSpace(query.Search) ? null : query.Search.Trim(),
       Status = query.Status,
       Category = query.Category,
-      Sort = sort
+      SortBy = sortBy,
+      SortDirection = sortDirection
     };
   }
 }

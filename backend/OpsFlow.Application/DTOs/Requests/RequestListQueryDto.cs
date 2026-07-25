@@ -6,11 +6,17 @@ public class RequestListQueryDto
 {
   public int Page { get; set; } = 1;
 
-  public int PageSize { get; set; } = 20;
+  public int PageSize { get; set; } = 10;
+
+  public string? Search { get; set; }
 
   public RequestStatus? Status { get; set; }
 
   public RequestCategory? Category { get; set; }
 
-  public string? Sort { get; set; } = "updatedAt_desc";
+  public string? SortBy { get; set; } = "updatedAt";
+
+  public string? SortDirection { get; set; } = "desc";
+
+  public string? Sort { get; set; }
 }

@@ -1,5 +1,1 @@
-import { Typography } from "@mui/material";
-
-export default function RequestsPage() {
-  return <Typography variant="h4">Requests</Typography>;
-}
+export { default } from "../features/requests/RequestsPage";
