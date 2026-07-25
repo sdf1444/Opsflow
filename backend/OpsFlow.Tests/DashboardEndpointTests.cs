@@ -7,7 +7,8 @@ using OpsFlow.Infrastructure.Persistence;
 
 namespace OpsFlow.Tests;
 
-public class DashboardEndpointTests : IClassFixture<RequestAuditEndpointTests.TestFactory>, IAsyncLifetime
+[Collection("SharedTestFactory")]
+public class DashboardEndpointTests : IAsyncLifetime
 {
     private readonly RequestAuditEndpointTests.TestFactory _factory;
 

@@ -1,5 +1,7 @@
-import { get } from "../../api/request";
+import { get, post } from "../../api/request";
 import type {
+  CreateRequestRequest,
+  CreateRequestResponse,
   PaginatedResponse,
   RequestListItem,
   RequestListParams,
@@ -32,4 +34,8 @@ export function getRequests(params: RequestListParams): Promise<PaginatedRespons
   const queryString = buildQueryString(params);
 
   return get<PaginatedResponse<RequestListItem>>(`/requests?${queryString}`);
+}
+
+export function createRequest(request: CreateRequestRequest) {
+  return post<CreateRequestResponse, CreateRequestRequest>("/requests", request);
 }

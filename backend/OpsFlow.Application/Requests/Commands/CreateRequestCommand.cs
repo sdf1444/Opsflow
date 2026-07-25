@@ -15,4 +15,6 @@ public class CreateRequestCommand : IRequest<Request>
     public RequestCategory Category { get; set; }
 
     public Guid? AssignedReviewerId { get; set; }
+
+    public bool Submit { get; set; }
 }

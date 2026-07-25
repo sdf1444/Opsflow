@@ -34,15 +34,28 @@ public class CreateRequestHandler : IRequestHandler<OpsFlow.Application.Requests
             Title = request.Title,
             Description = request.Description,
             Category = request.Category,
-            Status = Domain.Enums.RequestStatus.Draft,
+            Status = request.Submit ? Domain.Enums.RequestStatus.Submitted : Domain.Enums.RequestStatus.Draft,
             CreatedByUserId = request.UserId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
-            AssignedReviewerId = request.AssignedReviewerId
+            AssignedReviewerId = request.AssignedReviewerId,
+            SubmittedAt = request.Submit ? DateTime.UtcNow : null
         };
 
         await _requestRepository.AddAsync(entity, cancellationToken);
-        await _auditService.LogAsync(entity.Id, request.UserId, "RequestCreated", "Created draft request.", null, cancellationToken);
+        await _auditService.LogAsync(
+            entity.Id,
+            request.UserId,
+            "RequestCreated",
+            request.Submit ? "Created and submitted request." : "Created draft request.",
+            null,
+            cancellationToken);
+
+        if (request.Submit)
+        {
+            await _auditService.LogAsync(entity.Id, request.UserId, "RequestSubmitted", "Submitted request for review.", null, cancellationToken);
+        }
+
         await _requestRepository.SaveChangesAsync(cancellationToken);
 
         return entity;

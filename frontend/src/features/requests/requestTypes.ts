@@ -46,3 +46,15 @@ export type RequestListParams = {
   sortBy: "updatedAt" | "createdAt" | "title" | "status";
   sortDirection: SortDirection;
 };
+
+export interface CreateRequestRequest {
+  title: string;
+  description: string;
+  category: RequestCategory;
+  submit: boolean;
+}
+
+export interface CreateRequestResponse {
+  id: string;
+  status: RequestStatus;
+}

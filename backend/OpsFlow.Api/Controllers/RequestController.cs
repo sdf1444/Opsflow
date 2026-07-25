@@ -28,7 +28,7 @@ public class RequestController : ControllerBase
 
   [HttpPost]
   [Authorize(Policy = "EmployeeOnly")]
-  public async Task<IActionResult> Create(CreateRequestDto requestDto, CancellationToken cancellationToken)
+  public async Task<IActionResult> Create([FromBody] CreateRequestRequest requestDto, CancellationToken cancellationToken)
   {
     var userIdValue = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
     if (!Guid.TryParse(userIdValue, out var userId))
@@ -42,7 +42,8 @@ public class RequestController : ControllerBase
       Title = requestDto.Title,
       Description = requestDto.Description,
       Category = requestDto.Category,
-      AssignedReviewerId = requestDto.AssignedReviewerId
+      AssignedReviewerId = null,
+      Submit = requestDto.Submit
     };
 
     var request = await _mediator.Send(cmd, cancellationToken);

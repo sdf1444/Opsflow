@@ -1,7 +1,7 @@
 import AddIcon from "@mui/icons-material/Add";
-import { Alert, Box, Button, Paper, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Paper, Snackbar, Stack, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { RequestFilters } from "./components/RequestFilters";
 import { RequestListSkeleton } from "./components/RequestListSkeleton";
 import { RequestsTable } from "./components/RequestsTable";
@@ -10,6 +10,7 @@ import type { RequestCategory, RequestListParams, RequestStatus } from "./reques
 
 export default function RequestsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -19,6 +20,16 @@ export default function RequestsPage() {
   const [pageSize, setPageSize] = useState(10);
   const [sortBy, setSortBy] = useState<RequestListParams["sortBy"]>("updatedAt");
   const [sortDirection, setSortDirection] = useState<RequestListParams["sortDirection"]>("desc");
+  const [flashMessage, setFlashMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const state = location.state as { flashMessage?: string } | null;
+
+    if (state?.flashMessage) {
+      setFlashMessage(state.flashMessage);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.pathname, location.state, navigate]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -146,6 +157,13 @@ export default function RequestsPage() {
           onSortChange={handleSortChange}
         />
       )}
+
+      <Snackbar
+        open={Boolean(flashMessage)}
+        autoHideDuration={4000}
+        onClose={() => setFlashMessage(null)}
+        message={flashMessage ?? undefined}
+      />
     </Stack>
   );
 }

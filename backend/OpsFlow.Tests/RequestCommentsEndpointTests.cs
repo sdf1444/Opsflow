@@ -9,7 +9,8 @@ using Xunit;
 
 namespace OpsFlow.Tests;
 
-public class RequestCommentsEndpointTests : IClassFixture<RequestAuditEndpointTests.TestFactory>, IAsyncLifetime
+[Collection("SharedTestFactory")]
+public class RequestCommentsEndpointTests : IAsyncLifetime
 {
     private readonly RequestAuditEndpointTests.TestFactory _factory;
 

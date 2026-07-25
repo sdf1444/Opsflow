@@ -10,7 +10,8 @@ using OpsFlow.Infrastructure.Persistence;
 
 namespace OpsFlow.Tests.Integration.Authentication;
 
-public class AuthEndpointsTests : IClassFixture<global::OpsFlow.Tests.RequestAuditEndpointTests.TestFactory>
+[Collection("SharedTestFactory")]
+public class AuthEndpointsTests
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

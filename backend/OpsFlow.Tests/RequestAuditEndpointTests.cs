@@ -20,7 +20,8 @@ using Xunit;
 
 namespace OpsFlow.Tests;
 
-public class RequestAuditEndpointTests : IClassFixture<RequestAuditEndpointTests.TestFactory>, IAsyncLifetime
+[Collection("SharedTestFactory")]
+public class RequestAuditEndpointTests : IAsyncLifetime
 {
     private readonly TestFactory _factory;
 

@@ -9,6 +9,7 @@ import NotFoundPage from "../pages/NotFoundPage";
 import ProfilePage from "../pages/ProfilePage";
 import RequestDetailPage from "../pages/RequestDetailPage";
 import RequestsPage from "../features/requests/RequestsPage";
+import CreateRequestPage from "../features/requests/CreateRequestPage";
 
 export default function AppRouter() {
   return (
@@ -26,7 +27,7 @@ export default function AppRouter() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="requests" element={<RequestsPage />} />
-        <Route path="requests/new" element={<div>New request form coming next.</div>} />
+        <Route path="requests/new" element={<CreateRequestPage />} />
         <Route path="requests/:id" element={<RequestDetailPage />} />
         <Route path="approvals" element={<ApprovalsPage />} />
         <Route path="admin" element={<AdminPage />} />
