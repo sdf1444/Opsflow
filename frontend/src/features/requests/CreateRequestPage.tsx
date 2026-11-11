@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Container, Paper, Stack, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import { toApiError } from "../../api/apiError";
 import { useCreateRequest } from "./create/useCreateRequest";
 import { RequestForm } from "./components/RequestForm";
 import type { CreateRequestForm } from "./create/createRequestSchema";
@@ -56,7 +57,7 @@ export default function CreateRequestPage() {
             onSubmit={(values) => handleCreate(values, true)}
             isSaving={createRequestMutation.isPending}
             savingMode={savingMode}
-            submitError={createRequestMutation.isError ? "Unable to create request." : null}
+            submitError={createRequestMutation.isError ? toApiError(createRequestMutation.error).message : null}
           />
         </Paper>
       </Stack>

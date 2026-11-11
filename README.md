@@ -27,7 +27,7 @@ The application demonstrates engineering patterns commonly found in commercial s
 
 ### Backend
 
-- ASP.NET Core (.NET 8)
+- ASP.NET Core (.NET 9)
 - Entity Framework Core
 - PostgreSQL
 
@@ -39,9 +39,7 @@ The application demonstrates engineering patterns commonly found in commercial s
 
 ## Current Status
 
-Project initialisation.
-
-Application development has not yet started.
+OpsFlow is an implemented request and approval workflow. Employees can create and submit requests, managers review their assigned queue, and admins can review all pending requests. New submissions are automatically assigned to the manager with the smallest active review queue.
 
 ## Running with Docker
 

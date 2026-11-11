@@ -495,8 +495,9 @@ public class RequestServiceTests
 
     private static RequestService CreateService(IEnumerable<User> users, IEnumerable<Request>? requests = null)
     {
-        var userRepository = new InMemoryUserRepository(users);
-        var requestRepository = new InMemoryRequestRepository(requests ?? Array.Empty<Request>());
+        var userList = users.ToList();
+        var userRepository = new InMemoryUserRepository(userList);
+        var requestRepository = new InMemoryRequestRepository(requests ?? Array.Empty<Request>(), userList);
         var auditService = new InMemoryAuditService(requestRepository);
         var mapper = new ResponseMapper();
         return new RequestService(requestRepository, userRepository, auditService, mapper);
@@ -536,10 +537,12 @@ public class RequestServiceTests
     private class InMemoryRequestRepository : IRequestRepository
     {
         private readonly List<Request> _requests;
+        private readonly List<User> _users;
 
-        public InMemoryRequestRepository(IEnumerable<Request> requests)
+        public InMemoryRequestRepository(IEnumerable<Request> requests, IEnumerable<User> users)
         {
             _requests = requests.ToList();
+            _users = users.ToList();
         }
 
         public Task AddAsync(Request request, CancellationToken cancellationToken)
@@ -599,10 +602,27 @@ public class RequestServiceTests
             return Task.FromResult((paged, totalCount));
         }
 
-        public Task<List<Request>> GetPendingAsync(CancellationToken cancellationToken)
+        public Task<List<Request>> GetPendingAsync(Guid? assignedReviewerId, CancellationToken cancellationToken)
         {
-            var pending = _requests.Where(r => r.Status == OpsFlow.Domain.Enums.RequestStatus.Submitted || r.Status == OpsFlow.Domain.Enums.RequestStatus.UnderReview).ToList();
+            var pending = _requests
+                .Where(r => r.Status == OpsFlow.Domain.Enums.RequestStatus.Submitted || r.Status == OpsFlow.Domain.Enums.RequestStatus.UnderReview)
+                .Where(r => !assignedReviewerId.HasValue || r.AssignedReviewerId == assignedReviewerId)
+                .ToList();
             return Task.FromResult(pending);
+        }
+
+        public Task<Guid?> GetLeastLoadedReviewerIdAsync(CancellationToken cancellationToken)
+        {
+            var reviewerId = _users
+                .Where(user => user.Role == UserRole.Manager)
+                .OrderBy(user => _requests.Count(request =>
+                    request.AssignedReviewerId == user.Id &&
+                    (request.Status == RequestStatus.Submitted || request.Status == RequestStatus.UnderReview)))
+                .ThenBy(user => user.CreatedAt)
+                .ThenBy(user => user.Id)
+                .Select(user => (Guid?)user.Id)
+                .FirstOrDefault();
+            return Task.FromResult(reviewerId);
         }
 
         public Task<Request?> GetByIdAsync(Guid id, CancellationToken cancellationToken)

@@ -1,12 +1,14 @@
 using OpsFlow.Domain.Enums;
 
-public class CreateRequestDto
+namespace OpsFlow.Application.DTOs.Requests;
+
+public sealed class CreateRequestDto
 {
-  public string Title { get; set; } = "";
+  public string Title { get; init; } = string.Empty;
 
-  public string Description { get; set; } = "";
+  public string Description { get; init; } = string.Empty;
 
-  public RequestCategory Category { get; set; }
+  public RequestCategory Category { get; init; }
 
-  public Guid? AssignedReviewerId { get; set; }
+  public bool Submit { get; init; }
 }

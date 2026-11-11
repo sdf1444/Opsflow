@@ -36,21 +36,57 @@ public class RequestService
       throw new InvalidOperationException("User not found.");
     }
 
+    if (user.Role != UserRole.Employee)
+    {
+      throw new UnauthorizedAccessException("Only employees can create requests.");
+    }
+
+    var now = DateTime.UtcNow;
+    Guid? assignedReviewerId = null;
+    if (requestDto.Submit)
+    {
+      if (string.IsNullOrWhiteSpace(requestDto.Title) ||
+          string.IsNullOrWhiteSpace(requestDto.Description) ||
+          requestDto.Category == default)
+      {
+        throw new InvalidOperationException("Request must have title, description, and category before submitting.");
+      }
+
+      assignedReviewerId = await RequestReviewerAssignment.ResolveAsync(
+        null,
+        _userRepository,
+        _requestRepository,
+        cancellationToken);
+    }
+
     var request = new Request
     {
       Id = Guid.NewGuid(),
       Title = requestDto.Title,
       Description = requestDto.Description,
       Category = requestDto.Category,
-      Status = RequestStatus.Draft,
+      Status = requestDto.Submit ? RequestStatus.Submitted : RequestStatus.Draft,
       CreatedByUserId = userId,
-      CreatedAt = DateTime.UtcNow,
-      UpdatedAt = DateTime.UtcNow,
-      AssignedReviewerId = requestDto.AssignedReviewerId
+      CreatedAt = now,
+      UpdatedAt = now,
+      AssignedReviewerId = assignedReviewerId,
+      SubmittedAt = requestDto.Submit ? now : null
     };
 
     await _requestRepository.AddAsync(request, cancellationToken);
-    await _auditService.LogAsync(request.Id, userId, "RequestCreated", "Created draft request.", null, cancellationToken);
+    await _auditService.LogAsync(
+      request.Id,
+      userId,
+      "RequestCreated",
+      requestDto.Submit ? "Created and submitted request." : "Created draft request.",
+      null,
+      cancellationToken);
+
+    if (requestDto.Submit)
+    {
+      await _auditService.LogAsync(request.Id, userId, "RequestSubmitted", "Submitted request for review.", null, cancellationToken);
+    }
+
     await _requestRepository.SaveChangesAsync(cancellationToken);
 
     return request;
@@ -109,11 +145,16 @@ public class RequestService
       throw new UnauthorizedAccessException("You are not authorized to submit this request.");
     }
 
-    if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Description) || request.Category == default || request.AssignedReviewerId == null)
+    if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Description) || request.Category == default)
     {
-      throw new InvalidOperationException("Request must have title, description, category, and reviewer before submitting.");
+      throw new InvalidOperationException("Request must have title, description, and category before submitting.");
     }
 
+    request.AssignedReviewerId = await RequestReviewerAssignment.ResolveAsync(
+      request.AssignedReviewerId,
+      _userRepository,
+      _requestRepository,
+      cancellationToken);
     request.Status = RequestStatus.Submitted;
     request.SubmittedAt = DateTime.UtcNow;
     request.UpdatedAt = DateTime.UtcNow;
@@ -243,7 +284,9 @@ public class RequestService
     }
 
     var normalizedQuery = NormalizeListQuery(query);
-    var pendingRequests = await _requestRepository.GetPendingAsync(cancellationToken);
+    var pendingRequests = await _requestRepository.GetPendingAsync(
+      user.Role == UserRole.Manager ? userId : null,
+      cancellationToken);
 
     var visiblePending = user.Role switch
     {
@@ -324,9 +367,17 @@ public class RequestService
     };
   }
 
-  public async Task<List<Request>> GetPendingAsync(CancellationToken cancellationToken)
+  public async Task<List<Request>> GetPendingAsync(Guid userId, CancellationToken cancellationToken)
   {
-    return await _requestRepository.GetPendingAsync(cancellationToken);
+    var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+    if (user is null || (user.Role != UserRole.Manager && user.Role != UserRole.Admin))
+    {
+      throw new UnauthorizedAccessException("Only managers or admins can access pending requests.");
+    }
+
+    return await _requestRepository.GetPendingAsync(
+      user.Role == UserRole.Manager ? userId : null,
+      cancellationToken);
   }
 
   public async Task<Request> CancelAsync(Guid userId, Guid requestId, CancellationToken cancellationToken)

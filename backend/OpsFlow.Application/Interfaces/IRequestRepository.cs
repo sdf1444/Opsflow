@@ -11,7 +11,9 @@ public interface IRequestRepository
 
   Task<(List<Request> Requests, int TotalCount)> GetAllAsync(RequestListQueryDto query, Guid currentUserId, UserRole currentUserRole, CancellationToken cancellationToken);
 
-  Task<List<Request>> GetPendingAsync(CancellationToken cancellationToken);
+  Task<List<Request>> GetPendingAsync(Guid? assignedReviewerId, CancellationToken cancellationToken);
+
+  Task<Guid?> GetLeastLoadedReviewerIdAsync(CancellationToken cancellationToken);
 
   Task AddAsync(Request request, CancellationToken cancellationToken);
 

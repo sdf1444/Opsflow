@@ -4,7 +4,6 @@ using Microsoft.Extensions.DependencyInjection;
 using OpsFlow.Application.Interfaces;
 using OpsFlow.Infrastructure.Authentication;
 using OpsFlow.Infrastructure.Persistence;
-using MediatR;
 using OpsFlow.Application.Services;
 using OpsFlow.Application.Mappings;
 
@@ -35,9 +34,6 @@ public static class DependencyInjection
     services.AddScoped<OpsFlow.Application.Services.RequestService>();
     services.AddScoped<OpsFlow.Application.Services.DashboardService>();
     services.AddSingleton<IResponseMapper, ResponseMapper>();
-
-    // MediatR registration for application handlers
-    services.AddMediatR(typeof(RequestService).Assembly);
 
     return services;
   }

@@ -3,8 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using OpsFlow.Application.DTOs.Requests;
 using OpsFlow.Application.DTOs.Comments;
 using OpsFlow.Application.Services;
-using MediatR;
-using OpsFlow.Application.Requests.Commands;
 using OpsFlow.Application.Interfaces;
 using OpsFlow.Domain.Enums;
 
@@ -15,20 +13,18 @@ namespace OpsFlow.Api.Controllers;
 [Authorize(Policy = "AuthenticatedUser")]
 public class RequestController : ControllerBase
 {
-  private readonly IMediator _mediator;
   private readonly RequestService _requestService;
   private readonly IResponseMapper _responseMapper;
 
-  public RequestController(IMediator mediator, RequestService requestService, IResponseMapper responseMapper)
+  public RequestController(RequestService requestService, IResponseMapper responseMapper)
   {
-    _mediator = mediator;
     _requestService = requestService;
     _responseMapper = responseMapper;
   }
 
   [HttpPost]
   [Authorize(Policy = "EmployeeOnly")]
-  public async Task<IActionResult> Create([FromBody] CreateRequestRequest requestDto, CancellationToken cancellationToken)
+  public async Task<IActionResult> Create([FromBody] CreateRequestDto requestDto, CancellationToken cancellationToken)
   {
     var userIdValue = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
     if (!Guid.TryParse(userIdValue, out var userId))
@@ -36,17 +32,7 @@ public class RequestController : ControllerBase
       return Unauthorized();
     }
 
-    var cmd = new CreateRequestCommand
-    {
-      UserId = userId,
-      Title = requestDto.Title,
-      Description = requestDto.Description,
-      Category = requestDto.Category,
-      AssignedReviewerId = null,
-      Submit = requestDto.Submit
-    };
-
-    var request = await _mediator.Send(cmd, cancellationToken);
+    var request = await _requestService.CreateRequestAsync(userId, requestDto, cancellationToken);
     var response = _responseMapper.MapRequest(request);
     return CreatedAtAction(nameof(GetById), new { id = request.Id }, response);
   }
@@ -135,7 +121,13 @@ public class RequestController : ControllerBase
   [Authorize(Policy = "ManagerOrAdmin")]
   public async Task<IActionResult> GetPending(CancellationToken cancellationToken)
   {
-    var requests = await _requestService.GetPendingAsync(cancellationToken);
+    var userIdValue = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (!Guid.TryParse(userIdValue, out var userId))
+    {
+      return Unauthorized();
+    }
+
+    var requests = await _requestService.GetPendingAsync(userId, cancellationToken);
     return Ok(_responseMapper.MapRequests(requests));
   }
 

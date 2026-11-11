@@ -102,8 +102,11 @@ public class TransactionalConsistencyTests
         public Task<(List<Request> Requests, int TotalCount)> GetAllAsync(RequestListQueryDto query, Guid currentUserId, OpsFlow.Domain.Enums.UserRole currentUserRole, CancellationToken cancellationToken)
             => _inner.GetAllAsync(query, currentUserId, currentUserRole, cancellationToken);
 
-        public Task<List<Request>> GetPendingAsync(CancellationToken cancellationToken)
-            => _inner.GetPendingAsync(cancellationToken);
+        public Task<List<Request>> GetPendingAsync(Guid? assignedReviewerId, CancellationToken cancellationToken)
+            => _inner.GetPendingAsync(assignedReviewerId, cancellationToken);
+
+        public Task<Guid?> GetLeastLoadedReviewerIdAsync(CancellationToken cancellationToken)
+            => _inner.GetLeastLoadedReviewerIdAsync(cancellationToken);
 
         public Task AddAsync(Request request, CancellationToken cancellationToken)
             => _inner.AddAsync(request, cancellationToken);

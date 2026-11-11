@@ -59,7 +59,12 @@ describe("CreateRequestPage", () => {
 
   it("shows API error", async () => {
     server.use(
-      http.post("*/requests", async () => HttpResponse.json({ title: "Failed" }, { status: 500 })),
+      http.post("*/requests", async () =>
+        HttpResponse.json(
+          { title: "Invalid operation.", detail: "No managers are available to review requests." },
+          { status: 400 },
+        ),
+      ),
     );
 
     const user = userEvent.setup();
@@ -69,6 +74,6 @@ describe("CreateRequestPage", () => {
     await user.type(screen.getByLabelText("Description"), "Need dual monitors to improve productivity.");
     await user.click(screen.getByRole("button", { name: "Save Draft" }));
 
-    expect(await screen.findByText("Unable to create request.")).toBeInTheDocument();
+    expect(await screen.findByText("No managers are available to review requests.")).toBeInTheDocument();
   }, 15000);
 });

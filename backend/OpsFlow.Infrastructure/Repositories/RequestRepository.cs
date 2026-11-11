@@ -66,15 +66,42 @@ public class RequestRepository : IRequestRepository
     return (items, totalCount);
   }
 
-  public async Task<List<Request>> GetPendingAsync(CancellationToken cancellationToken)
+  public async Task<List<Request>> GetPendingAsync(Guid? assignedReviewerId, CancellationToken cancellationToken)
   {
-    return await _dbContext.Requests
-      .Where(r => r.Status == RequestStatus.Submitted || r.Status == RequestStatus.UnderReview)
+    var query = _dbContext.Requests
+      .Where(r => r.Status == RequestStatus.Submitted || r.Status == RequestStatus.UnderReview);
+
+    if (assignedReviewerId.HasValue)
+    {
+      query = query.Where(r => r.AssignedReviewerId == assignedReviewerId);
+    }
+
+    return await query
       .Include(r => r.CreatedByUser)
       .Include(r => r.AssignedReviewer)
       .Include(r => r.Comments)
       .Include(r => r.AuditLogs)
       .ToListAsync(cancellationToken);
+  }
+
+  public async Task<Guid?> GetLeastLoadedReviewerIdAsync(CancellationToken cancellationToken)
+  {
+    return await _dbContext.Users
+      .AsNoTracking()
+      .Where(user => user.Role == UserRole.Manager)
+      .Select(user => new
+      {
+        user.Id,
+        user.CreatedAt,
+        ActiveRequestCount = _dbContext.Requests.Count(request =>
+          request.AssignedReviewerId == user.Id &&
+          (request.Status == RequestStatus.Submitted || request.Status == RequestStatus.UnderReview))
+      })
+      .OrderBy(user => user.ActiveRequestCount)
+      .ThenBy(user => user.CreatedAt)
+      .ThenBy(user => user.Id)
+      .Select(user => (Guid?)user.Id)
+      .FirstOrDefaultAsync(cancellationToken);
   }
 
   public async Task<Request?> GetByIdAsync(Guid id, CancellationToken cancellationToken)

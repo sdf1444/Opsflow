@@ -77,6 +77,147 @@ public class ApprovalQueueEndpointTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SubmittingRequest_AssignsLeastLoadedManagerAndAllowsApproval()
+    {
+        var managerA = NewUser("Manager A", "manager.a.auto@test", UserRole.Manager);
+        var managerB = NewUser("Manager B", "manager.b.auto@test", UserRole.Manager);
+        var owner = NewUser("Employee", "employee.auto@test", UserRole.Employee);
+        var existingRequest = NewRequest(owner, managerA, "Existing pending", RequestStatus.Submitted, DateTime.UtcNow.AddHours(-1));
+
+        await ResetAndSeedAsync(new[] { managerA, managerB, owner }, new[] { existingRequest });
+
+        var employeeClient = _factory.CreateAuthenticatedClient(owner.Id, "Employee");
+        var payload = JsonSerializer.Serialize(new
+        {
+            title = "New submitted request",
+            description = "A submitted request for manager review",
+            category = "Equipment",
+            submit = true
+        });
+        using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+
+        var createResponse = await employeeClient.PostAsync("/api/requests", content);
+
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        using var created = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var requestId = created.RootElement.GetProperty("id").GetGuid();
+        Assert.Equal(managerB.Id, created.RootElement.GetProperty("assignedReviewerId").GetGuid());
+
+        var managerClient = _factory.CreateAuthenticatedClient(managerB.Id, "Manager");
+        var queueResponse = await managerClient.GetAsync("/api/approvals");
+        queueResponse.EnsureSuccessStatusCode();
+        using (var queue = JsonDocument.Parse(await queueResponse.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(1, queue.RootElement.GetProperty("totalCount").GetInt32());
+            Assert.Equal("New submitted request", queue.RootElement.GetProperty("items")[0].GetProperty("title").GetString());
+        }
+
+        var detailResponse = await managerClient.GetAsync($"/api/requests/{requestId}");
+        detailResponse.EnsureSuccessStatusCode();
+
+        var approveResponse = await managerClient.PostAsync($"/api/requests/{requestId}/approve", null);
+        approveResponse.EnsureSuccessStatusCode();
+        using var approved = JsonDocument.Parse(await approveResponse.Content.ReadAsStringAsync());
+        Assert.Equal("Approved", approved.RootElement.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task SubmittingRequestWithoutManagers_ReturnsBadRequest()
+    {
+        var owner = NewUser("Employee", "employee.no-manager@test", UserRole.Employee);
+        await ResetAndSeedAsync(new[] { owner }, Array.Empty<Request>());
+
+        var client = _factory.CreateAuthenticatedClient(owner.Id, "Employee");
+        var payload = JsonSerializer.Serialize(new
+        {
+            title = "Cannot route request",
+            description = "No manager exists to review this request",
+            category = "Equipment",
+            submit = true
+        });
+        using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+
+        var response = await client.PostAsync("/api/requests", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Contains("No managers", body.RootElement.GetProperty("detail").GetString());
+
+        var requestsResponse = await client.GetAsync("/api/requests");
+        requestsResponse.EnsureSuccessStatusCode();
+        using var requests = JsonDocument.Parse(await requestsResponse.Content.ReadAsStringAsync());
+        Assert.Equal(0, requests.RootElement.GetProperty("totalCount").GetInt32());
+
+        payload = JsonSerializer.Serialize(new
+        {
+            title = "Draft awaiting a manager",
+            description = "This draft can be submitted after a manager is available",
+            category = "Equipment",
+            submit = false
+        });
+        using var draftContent = new StringContent(payload, Encoding.UTF8, "application/json");
+        var draftResponse = await client.PostAsync("/api/requests", draftContent);
+        Assert.Equal(HttpStatusCode.Created, draftResponse.StatusCode);
+
+        using var draft = JsonDocument.Parse(await draftResponse.Content.ReadAsStringAsync());
+        var draftId = draft.RootElement.GetProperty("id").GetGuid();
+        var submitResponse = await client.PostAsync($"/api/requests/{draftId}/submit", null);
+        Assert.Equal(HttpStatusCode.BadRequest, submitResponse.StatusCode);
+
+        var draftDetail = await client.GetAsync($"/api/requests/{draftId}");
+        draftDetail.EnsureSuccessStatusCode();
+        using var detail = JsonDocument.Parse(await draftDetail.Content.ReadAsStringAsync());
+        Assert.Equal("Draft", detail.RootElement.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task SubmittingExistingDraft_AssignsManagerAndMakesItReviewable()
+    {
+        var manager = NewUser("Manager", "manager.draft-submit@test", UserRole.Manager);
+        var owner = NewUser("Employee", "employee.draft-submit@test", UserRole.Employee);
+        var draft = NewRequest(owner, manager, "Existing draft", RequestStatus.Draft, DateTime.UtcNow);
+        draft.AssignedReviewerId = null;
+        draft.AssignedReviewer = null;
+
+        await ResetAndSeedAsync(new[] { manager, owner }, new[] { draft });
+
+        var employeeClient = _factory.CreateAuthenticatedClient(owner.Id, "Employee");
+        var submitResponse = await employeeClient.PostAsync($"/api/requests/{draft.Id}/submit", null);
+        submitResponse.EnsureSuccessStatusCode();
+        using var submitted = JsonDocument.Parse(await submitResponse.Content.ReadAsStringAsync());
+        Assert.Equal(manager.Id, submitted.RootElement.GetProperty("assignedReviewerId").GetGuid());
+        Assert.Equal("Submitted", submitted.RootElement.GetProperty("status").GetString());
+
+        var managerClient = _factory.CreateAuthenticatedClient(manager.Id, "Manager");
+        var queueResponse = await managerClient.GetAsync("/api/approvals");
+        queueResponse.EnsureSuccessStatusCode();
+        using var queue = JsonDocument.Parse(await queueResponse.Content.ReadAsStringAsync());
+        Assert.Equal(1, queue.RootElement.GetProperty("totalCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task PendingEndpointOnlyReturnsRequestsAssignedToManager()
+    {
+        var manager = NewUser("Manager", "manager.pending-filter@test", UserRole.Manager);
+        var anotherManager = NewUser("Another", "another.pending-filter@test", UserRole.Manager);
+        var owner = NewUser("Employee", "employee.pending-filter@test", UserRole.Employee);
+        var assigned = NewRequest(owner, manager, "Assigned pending", RequestStatus.Submitted, DateTime.UtcNow.AddHours(-1));
+        var otherAssigned = NewRequest(owner, anotherManager, "Other manager pending", RequestStatus.Submitted, DateTime.UtcNow.AddHours(-1));
+        otherAssigned.AssignedReviewerId = anotherManager.Id;
+        otherAssigned.AssignedReviewer = anotherManager;
+
+        await ResetAndSeedAsync(new[] { manager, anotherManager, owner }, new[] { assigned, otherAssigned });
+
+        var client = _factory.CreateAuthenticatedClient(manager.Id, "Manager");
+        var response = await client.GetAsync("/api/requests/pending");
+
+        response.EnsureSuccessStatusCode();
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Single(doc.RootElement.EnumerateArray());
+        Assert.Equal("Assigned pending", doc.RootElement[0].GetProperty("title").GetString());
+    }
+
+    [Fact]
     public async Task EmployeeCannotAccessApprovalQueue()
     {
         var employee = NewUser("Employee", "employee.forbidden@test", UserRole.Employee);
