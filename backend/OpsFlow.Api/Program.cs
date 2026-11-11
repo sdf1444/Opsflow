@@ -107,11 +107,15 @@ using (var scope = app.Services.CreateScope())
     try
     {
         db.Database.Migrate();
+        if (app.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("SeedDevelopmentData"))
+        {
+            DbSeeder.Seed(db);
+        }
     }
     catch (Exception ex)
     {
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        logger.LogWarning(ex, "Database migration skipped during startup.");
+        logger.LogWarning(ex, "Database migration or development seeding skipped during startup.");
     }
 }
 

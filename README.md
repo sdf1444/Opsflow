@@ -69,6 +69,14 @@ API Health:
 
 http://localhost:8080/health
 
+When the development database is empty, the API seeds these local sign-in accounts:
+
+| Role | Email | Password |
+|---|---|---|
+| Employee | employee@example.com | Password123! |
+| Manager | manager@example.com | Password123! |
+| Admin | admin@example.com | Password123! |
+
 View logs:
 
 ```bash

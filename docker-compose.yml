@@ -31,6 +31,7 @@ services:
         condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      SeedDevelopmentData: "true"
       ConnectionStrings__DefaultConnection: >
         Host=postgres;
         Database=opsflow;
@@ -47,7 +48,7 @@ services:
           "wget",
           "--spider",
           "-q",
-          "http://localhost:8080/health"
+          "http://127.0.0.1:8080/health"
         ]
       interval: 10s
       timeout: 5s
